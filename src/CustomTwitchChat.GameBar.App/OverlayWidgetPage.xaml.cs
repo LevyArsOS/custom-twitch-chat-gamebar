@@ -3,25 +3,23 @@ using CustomTwitchChat.GameBar.Core.State;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.UI;
 using Windows.UI.Core;
-using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
 
 namespace CustomTwitchChat.GameBar.App;
 
 /// <summary>
-/// Primary Xbox Game Bar widget view rendering the transparent Twitch chat overlay.
+/// Primary Xbox Game Bar widget view controller rendering the transparent Twitch chat overlay.
 /// </summary>
-public sealed partial class OverlayWidgetPage : Page
+public sealed class OverlayWidgetPage
 {
+    private readonly App _hostApp;
     private readonly WebView _webView;
     private XboxGameBarWidget? _widget;
-    private App HostApp => (App)Application.Current;
 
-    public OverlayWidgetPage()
+    public OverlayWidgetPage(App hostApp)
     {
-        Background = new SolidColorBrush(Colors.Transparent);
+        _hostApp = hostApp;
         _webView = new WebView
         {
             DefaultBackgroundColor = Colors.Transparent,
@@ -31,9 +29,15 @@ public sealed partial class OverlayWidgetPage : Page
 
         var root = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
         root.Children.Add(_webView);
-        Content = root;
-        Unloaded += (_, _) => DetachWidget();
+        View = new Page
+        {
+            Background = new SolidColorBrush(Colors.Transparent),
+            Content = root,
+        };
+        View.Unloaded += (_, _) => DetachWidget();
     }
+
+    public Page View { get; }
 
     public void AttachWidget(XboxGameBarWidget? widget)
     {
@@ -46,24 +50,14 @@ public sealed partial class OverlayWidgetPage : Page
             _widget.GameBarDisplayModeChanged += OnWidgetStateChanged;
             _widget.RequestedOpacityChanged += OnWidgetStateChanged;
             _widget.SettingsClicked += OnSettingsClicked;
-            HostApp.StateController.OpenSettingsRequested += OnOpenSettingsRequested;
-            HostApp.ConfigStore.ConfigChanged += OnConfigChanged;
+            _hostApp.StateController.OpenSettingsRequested += OnOpenSettingsRequested;
+            _hostApp.ConfigStore.ConfigChanged += OnConfigChanged;
             PushHostSnapshot();
         }
 
-        _webView.Navigate(new Uri(HostApp.ConfigStore.GetSnapshot().OverlayUri));
-    }
-
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        base.OnNavigatedTo(e);
-        AttachWidget(e.Parameter as XboxGameBarWidget);
-    }
-
-    protected override void OnNavigatedFrom(NavigationEventArgs e)
-    {
-        base.OnNavigatedFrom(e);
-        DetachWidget();
+        var uri = _hostApp.ConfigStore.GetSnapshot().OverlayUri;
+        App.Trace($"OverlayWidgetPage navigating to {uri}");
+        _webView.Navigate(new Uri(uri));
     }
 
     private void DetachWidget()
@@ -77,8 +71,8 @@ public sealed partial class OverlayWidgetPage : Page
             _widget.SettingsClicked -= OnSettingsClicked;
             _widget = null;
         }
-        HostApp.StateController.OpenSettingsRequested -= OnOpenSettingsRequested;
-        HostApp.ConfigStore.ConfigChanged -= OnConfigChanged;
+        _hostApp.StateController.OpenSettingsRequested -= OnOpenSettingsRequested;
+        _hostApp.ConfigStore.ConfigChanged -= OnConfigChanged;
     }
 
     private void OnWidgetStateChanged(XboxGameBarWidget sender, object args) => PushHostSnapshot();
@@ -87,19 +81,19 @@ public sealed partial class OverlayWidgetPage : Page
     {
         if (_widget is null) return;
         var isGameBarOpen = _widget.GameBarDisplayMode != XboxGameBarDisplayMode.PinnedOnly;
-        var state = HostApp.StateController.UpdateHostState(new WidgetHostSnapshot(
+        var state = _hostApp.StateController.UpdateHostState(new WidgetHostSnapshot(
             IsPinned: _widget.Pinned,
             IsClickThroughEnabled: _widget.ClickThroughEnabled,
             IsGameBarOpen: isGameBarOpen,
             RequestedOpacity: _widget.RequestedOpacity,
             IsFavorited: _widget.Favorited));
 
-        var envelope = HostApp.Bridge.CreateStateEnvelope(state, HostApp.ConfigStore.GetSnapshot());
+        var envelope = _hostApp.Bridge.CreateStateEnvelope(state, _hostApp.ConfigStore.GetSnapshot());
         _ = DispatchEnvelopeAsync(envelope);
     }
 
     private void OnConfigChanged(ConfigSnapshot snapshot) =>
-        _ = DispatchEnvelopeAsync(HostApp.Bridge.CreateConfigEnvelope(snapshot));
+        _ = DispatchEnvelopeAsync(_hostApp.Bridge.CreateConfigEnvelope(snapshot));
 
     private async void OnSettingsClicked(XboxGameBarWidget sender, object args) =>
         await sender.ActivateSettingsAsync();
@@ -107,21 +101,22 @@ public sealed partial class OverlayWidgetPage : Page
     private void OnOpenSettingsRequested()
     {
         if (_widget is not null)
-            _ = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () => await _widget.ActivateSettingsAsync());
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () => await _widget.ActivateSettingsAsync());
     }
 
     private void OverlayWebView_NavigationCompleted(WebView sender, WebViewNavigationCompletedEventArgs args)
     {
+        App.Trace($"OverlayWebView NavigationCompleted IsSuccess={args.IsSuccess} WebErrorStatus={args.WebErrorStatus}");
         if (!args.IsSuccess) return;
-        var envelope = HostApp.Bridge.CreateStateEnvelope(
-            HostApp.StateController.CurrentState,
-            HostApp.ConfigStore.GetSnapshot());
+        var envelope = _hostApp.Bridge.CreateStateEnvelope(
+            _hostApp.StateController.CurrentState,
+            _hostApp.ConfigStore.GetSnapshot());
         _ = DispatchEnvelopeAsync(envelope);
     }
 
     private void OverlayWebView_ScriptNotify(object sender, NotifyEventArgs e)
     {
-        var result = HostApp.Bridge.HandleIncomingMessage(e.Value);
+        var result = _hostApp.Bridge.HandleIncomingMessage(e.Value);
         if (result.Handled && result.ResponseJson is not null)
         {
             _ = DispatchEnvelopeAsync(result.ResponseJson);
@@ -129,7 +124,7 @@ public sealed partial class OverlayWidgetPage : Page
     }
 
     private Task DispatchEnvelopeAsync(string envelopeJson) =>
-        Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+        View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
         {
             await _webView.InvokeScriptAsync(
                 "eval",

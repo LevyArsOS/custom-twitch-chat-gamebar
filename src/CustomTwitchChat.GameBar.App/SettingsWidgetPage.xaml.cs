@@ -1,53 +1,52 @@
-using CustomTwitchChat.GameBar.Core.Bridge;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.UI.Core;
-using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Navigation;
 
 namespace CustomTwitchChat.GameBar.App;
 
 /// <summary>
-/// Settings Xbox Game Bar widget view hosting the custom-twitch-chat Configurator.
+/// Settings Xbox Game Bar widget view controller hosting the custom-twitch-chat Configurator.
 /// </summary>
-public sealed partial class SettingsWidgetPage : Page
+public sealed class SettingsWidgetPage
 {
+    private readonly App _hostApp;
     private readonly WebView _webView;
-    private App HostApp => (App)Application.Current;
 
-    public SettingsWidgetPage()
+    public SettingsWidgetPage(App hostApp)
     {
+        _hostApp = hostApp;
         _webView = new WebView();
         _webView.NavigationCompleted += SettingsWebView_NavigationCompleted;
         _webView.ScriptNotify += SettingsWebView_ScriptNotify;
 
         var root = new Grid();
         root.Children.Add(_webView);
-        Content = root;
+        View = new Page
+        {
+            Content = root,
+        };
     }
+
+    public Page View { get; }
 
     public void AttachWidget(XboxGameBarWidget? widget)
     {
         _ = widget;
+        App.Trace("SettingsWidgetPage navigating to index.html");
         _webView.Navigate(new Uri("ms-appx-web:///WebAssets/index.html"));
-    }
-
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        base.OnNavigatedTo(e);
-        AttachWidget(e.Parameter as XboxGameBarWidget);
     }
 
     private void SettingsWebView_NavigationCompleted(WebView sender, WebViewNavigationCompletedEventArgs args)
     {
+        App.Trace($"SettingsWebView NavigationCompleted IsSuccess={args.IsSuccess} WebErrorStatus={args.WebErrorStatus}");
         if (!args.IsSuccess) return;
-        var envelope = HostApp.Bridge.CreateConfigEnvelope(HostApp.ConfigStore.GetSnapshot());
+        var envelope = _hostApp.Bridge.CreateConfigEnvelope(_hostApp.ConfigStore.GetSnapshot());
         _ = DispatchEnvelopeAsync(envelope);
     }
 
     private void SettingsWebView_ScriptNotify(object sender, NotifyEventArgs e)
     {
-        var result = HostApp.Bridge.HandleIncomingMessage(e.Value);
+        var result = _hostApp.Bridge.HandleIncomingMessage(e.Value);
         if (result.Handled && result.ResponseJson is not null)
         {
             _ = DispatchEnvelopeAsync(result.ResponseJson);
@@ -55,7 +54,7 @@ public sealed partial class SettingsWidgetPage : Page
     }
 
     private Task DispatchEnvelopeAsync(string envelopeJson) =>
-        Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+        View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
         {
             await _webView.InvokeScriptAsync(
                 "eval",

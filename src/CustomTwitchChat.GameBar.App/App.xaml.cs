@@ -6,6 +6,7 @@ using Windows.ApplicationModel.Activation;
 using Windows.Storage;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using WinRT;
 
 namespace CustomTwitchChat.GameBar.App;
 
@@ -16,7 +17,7 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        WinRT.ComWrappersSupport.InitializeComWrappers();
+        ComWrappersSupport.InitializeComWrappers();
         Application.Start(static _ => new App());
     }
 }
@@ -28,17 +29,22 @@ public sealed partial class App : Application
 {
     private XboxGameBarWidget? _overlayWidget;
     private XboxGameBarWidget? _settingsWidget;
+    private OverlayWidgetPage? _overlayController;
+    private SettingsWidgetPage? _settingsController;
 
     public App()
     {
+        UnhandledException += OnUnhandledException;
         IConfigStorage storage;
         try
         {
-            var configPath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "config.json");
-            storage = new FileConfigStorage(configPath);
+            var localDir = ApplicationData.Current.LocalFolder.Path;
+            Trace($"App.ctor LocalFolder={localDir}");
+            storage = new FileConfigStorage(Path.Combine(localDir, "config.json"));
         }
-        catch
+        catch (Exception ex)
         {
+            Trace($"App.ctor fallback storage: {ex.Message}");
             storage = new InMemoryConfigStorage();
         }
 
@@ -51,37 +57,81 @@ public sealed partial class App : Application
     public WidgetStateController StateController { get; }
     public BridgeProtocol Bridge { get; }
 
+    public static void Trace(string message)
+    {
+        try
+        {
+            var path = Path.Combine(ApplicationData.Current.LocalFolder.Path, "gamebar-trace.log");
+            File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Ignore logging errors inside restricted sandbox contexts.
+        }
+    }
+
     protected override void OnActivated(IActivatedEventArgs args)
     {
-        if (args is not XboxGameBarWidgetActivatedEventArgs widgetArgs)
+        try
         {
-            return;
-        }
+            Trace($"OnActivated Kind={args.Kind}");
+            var widgetArgs = TryCastWidgetArgs(args);
+            if (widgetArgs is null)
+            {
+                Trace("OnActivated args did not implement IXboxGameBarWidgetActivatedEventArgs");
+                return;
+            }
 
-        if (!widgetArgs.IsLaunchActivation)
-        {
+            Trace($"OnActivated ExtensionId={widgetArgs.AppExtensionId} IsLaunch={widgetArgs.IsLaunchActivation}");
+            if (!widgetArgs.IsLaunchActivation)
+            {
+                Window.Current.Activate();
+                return;
+            }
+
+            var rootFrame = new Frame();
+            Window.Current.Content = rootFrame;
+
+            if (string.Equals(widgetArgs.AppExtensionId, AppManifestValidator.SettingsWidgetId, StringComparison.Ordinal))
+            {
+                _settingsWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
+                _settingsController = new SettingsWidgetPage(this);
+                rootFrame.Content = _settingsController.View;
+                _settingsController.AttachWidget(_settingsWidget);
+            }
+            else
+            {
+                _overlayWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
+                _overlayController = new OverlayWidgetPage(this);
+                rootFrame.Content = _overlayController.View;
+                _overlayController.AttachWidget(_overlayWidget);
+            }
+
             Window.Current.Activate();
-            return;
+            Trace("OnActivated completed Window.Current.Activate()");
         }
-
-        var rootFrame = new Frame();
-        Window.Current.Content = rootFrame;
-
-        if (string.Equals(widgetArgs.AppExtensionId, AppManifestValidator.SettingsWidgetId, StringComparison.Ordinal))
+        catch (Exception ex)
         {
-            _settingsWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-            var settingsPage = new SettingsWidgetPage();
-            rootFrame.Content = settingsPage;
-            settingsPage.AttachWidget(_settingsWidget);
+            Trace($"OnActivated ERROR: {ex}");
+            throw;
         }
-        else
-        {
-            _overlayWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-            var overlayPage = new OverlayWidgetPage();
-            rootFrame.Content = overlayPage;
-            overlayPage.AttachWidget(_overlayWidget);
-        }
+    }
 
-        Window.Current.Activate();
+    private static XboxGameBarWidgetActivatedEventArgs? TryCastWidgetArgs(IActivatedEventArgs args)
+    {
+        if (args is XboxGameBarWidgetActivatedEventArgs direct) return direct;
+        try
+        {
+            return args.As<XboxGameBarWidgetActivatedEventArgs>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void OnUnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        Trace($"UnhandledException: {e.Message} | {e.Exception}");
     }
 }
