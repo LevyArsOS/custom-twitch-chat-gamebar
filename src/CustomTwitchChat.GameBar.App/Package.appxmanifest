@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  IgnorableNamespaces="uap uap3 mp">
+
+  <Identity
+    Name="CustomTwitchChat.GameBarWidget"
+    Publisher="CN=CustomTwitchChat"
+    Version="0.1.0.0" />
+
+  <mp:PhoneIdentity
+    PhoneProductId="4b5f9e62-2f08-4f63-9c12-1b8a9d22c340"
+    PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+
+  <Properties>
+    <DisplayName>Custom Twitch Chat Game Bar</DisplayName>
+    <PublisherDisplayName>CustomTwitchChat</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="pt-br" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="CustomTwitchChat.GameBar.App.App">
+      <uap:VisualElements
+        DisplayName="Custom Twitch Chat"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        Description="Transparent Xbox Game Bar Twitch chat overlay powered by custom-twitch-chat."
+        BackgroundColor="transparent">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension
+            Name="microsoft.gameBarUIExtension"
+            Id="CustomTwitchChat.Overlay"
+            DisplayName="Custom Twitch Chat Overlay"
+            Description="Transparent pinned Twitch chat overlay for fullscreen games."
+            PublicFolder="GameBar">
+            <uap3:Properties>
+              <GameBarWidget Type="Standard">
+                <SettingsSupported AppExtensionId="CustomTwitchChat.Settings" />
+                <AllowForegroundTransparency>true</AllowForegroundTransparency>
+                <PinningSupported>true</PinningSupported>
+                <ClickThroughSupported>true</ClickThroughSupported>
+                <BackgroundOpacitySupported>true</BackgroundOpacitySupported>
+                <Window>
+                  <Size>
+                    <Height>700</Height>
+                    <Width>420</Width>
+                    <MinHeight>240</MinHeight>
+                    <MinWidth>260</MinWidth>
+                    <MaxHeight>1440</MaxHeight>
+                    <MaxWidth>1200</MaxWidth>
+                  </Size>
+                  <ResizeSupported>
+                    <Horizontal>true</Horizontal>
+                    <Vertical>true</Vertical>
+                  </ResizeSupported>
+                </Window>
+              </GameBarWidget>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension
+            Name="microsoft.gameBarUIExtension"
+            Id="CustomTwitchChat.Settings"
+            DisplayName="Custom Twitch Chat Settings"
+            Description="Configurator for customizing channels, emotes, colors, and layout."
+            PublicFolder="GameBar">
+            <uap3:Properties>
+              <GameBarWidget Type="Settings">
+                <Window>
+                  <Size>
+                    <Height>760</Height>
+                    <Width>980</Width>
+                    <MinHeight>520</MinHeight>
+                    <MinWidth>680</MinWidth>
+                    <MaxHeight>1440</MaxHeight>
+                    <MaxWidth>1920</MaxWidth>
+                  </Size>
+                  <ResizeSupported>
+                    <Horizontal>true</Horizontal>
+                    <Vertical>true</Vertical>
+                  </ResizeSupported>
+                </Window>
+              </GameBarWidget>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+  </Capabilities>
+</Package>
