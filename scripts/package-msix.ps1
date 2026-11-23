@@ -39,6 +39,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
 
+$NuGetGameBar = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.gaming.xboxgamebar\7.3.2607010"
+if (Test-Path $NuGetGameBar) {
+    Copy-Item (Join-Path $NuGetGameBar "lib\uap10.0\Microsoft.Gaming.XboxGameBar.winmd") (Join-Path $LayoutDir "Microsoft.Gaming.XboxGameBar.winmd") -Force
+    Copy-Item (Join-Path $NuGetGameBar "private\Microsoft.Gaming.XboxGameBar.Private.winmd") (Join-Path $LayoutDir "Microsoft.Gaming.XboxGameBar.Private.winmd") -Force
+    Copy-Item (Join-Path $NuGetGameBar "runtimes\win10-$Platform\native\Microsoft.Gaming.XboxGameBar.dll") (Join-Path $LayoutDir "Microsoft.Gaming.XboxGameBar.dll") -Force
+    Copy-Item (Join-Path $NuGetGameBar "runtimes\win10-$Platform\native\Microsoft.Gaming.XboxGameBar.pri") (Join-Path $LayoutDir "Microsoft.Gaming.XboxGameBar.pri") -Force
+}
+
 $ExePath = Join-Path $LayoutDir "CustomTwitchChat.GameBar.App.exe"
 if (Test-Path $ExePath) {
     $ExeBytes = [System.IO.File]::ReadAllBytes($ExePath)
