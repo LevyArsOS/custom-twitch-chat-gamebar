@@ -13,7 +13,7 @@ namespace CustomTwitchChat.GameBar.App;
 /// <summary>
 /// Primary Xbox Game Bar widget view rendering the transparent Twitch chat overlay.
 /// </summary>
-public sealed class OverlayWidgetPage : Page
+public sealed partial class OverlayWidgetPage : Page
 {
     private readonly WebView _webView;
     private XboxGameBarWidget? _widget;

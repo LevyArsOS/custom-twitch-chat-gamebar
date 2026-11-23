@@ -10,7 +10,7 @@ namespace CustomTwitchChat.GameBar.App;
 /// <summary>
 /// Settings Xbox Game Bar widget view hosting the custom-twitch-chat Configurator.
 /// </summary>
-public sealed class SettingsWidgetPage : Page
+public sealed partial class SettingsWidgetPage : Page
 {
     private readonly WebView _webView;
     private App HostApp => (App)Application.Current;

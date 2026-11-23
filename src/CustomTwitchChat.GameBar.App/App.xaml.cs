@@ -18,14 +18,14 @@ public static class Program
     public static void Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ => _ = new App());
+        Application.Start(_ => { _ = new App(); });
     }
 }
 
 /// <summary>
 /// Application entry point routing Xbox Game Bar activations to Overlay and Settings views.
 /// </summary>
-public sealed class App : Application
+public sealed partial class App : Application
 {
     private XboxGameBarWidget? _overlayWidget;
     private XboxGameBarWidget? _settingsWidget;
