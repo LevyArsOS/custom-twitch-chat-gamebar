@@ -58,7 +58,7 @@ public sealed class WebBridgeContractTests
         var installScript = File.ReadAllText(Path.Combine(repoRoot, "scripts", "install-dev-msix.ps1"));
 
         Assert.Contains("CustomTwitchChat.GameBar.App.csproj", packageScript, StringComparison.Ordinal);
-        Assert.Contains("GenerateAppxPackageOnBuild=true", packageScript, StringComparison.Ordinal);
+        Assert.Contains("AppxManifest.xml", packageScript, StringComparison.Ordinal);
         Assert.Contains("Add-AppxPackage", installScript, StringComparison.Ordinal);
     }
 }
