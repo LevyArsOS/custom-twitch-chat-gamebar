@@ -1,0 +1,14 @@
+<Page
+  x:Class="CustomTwitchChat.GameBar.App.OverlayWidgetPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="Transparent">
+
+  <Grid Background="Transparent">
+    <WebView
+      x:Name="OverlayWebView"
+      DefaultBackgroundColor="Transparent"
+      NavigationCompleted="OverlayWebView_NavigationCompleted"
+      ScriptNotify="OverlayWebView_ScriptNotify" />
+  </Grid>
+</Page>
