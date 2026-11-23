@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="$ROOT/src/CustomTwitchChat.GameBar.App/WebAssets"
+BRIDGE="$ROOT/src/WebBridge/gamebar-bridge.js"
+CHECK_ONLY=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --check) CHECK_ONLY=1 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+find_web_dist() {
+  local candidates=()
+  [ -n "${CTC_WEB_DIR:-}" ] && candidates+=("$CTC_WEB_DIR")
+  candidates+=("$ROOT/../custom-twitch-chat" "$ROOT/../../../custom-twitch-chat" "$ROOT/../../../../custom-twitch-chat")
+  for dir in "${candidates[@]}"; do
+    if [ -f "$dir/dist/overlay.html" ] && [ -f "$dir/dist/index.html" ]; then
+      echo "$dir/dist"
+      return 0
+    fi
+  done
+  return 1
+}
+
+write_fallback_assets() {
+  mkdir -p "$DEST/runtime"
+  cat > "$DEST/runtime/overlay.css" <<'CSS'
+html, body { margin: 0; padding: 0; background: transparent; color: #fff; font-family: Montserrat, sans-serif; }
+CSS
+  cat > "$DEST/runtime/overlay.js" <<'JS'
+(function () { window.__CTC_RUNTIME_BOOTED__ = true; }());
+JS
+  cat > "$DEST/overlay.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://irc-ws.chat.twitch.tv wss://eventsub.wss.twitch.tv https://id.twitch.tv https://api.twitch.tv; object-src 'none'; base-uri 'none';">
+  <title>Custom Twitch Chat Overlay</title>
+  <link rel="stylesheet" href="runtime/overlay.css">
+</head>
+<body>
+  <div id="ctc-auth-root"></div>
+  <div id="chat-container" class="main-container"></div>
+  <script src="./gamebar-bridge.js"></script>
+  <script src="runtime/overlay.js"></script>
+</body>
+</html>
+HTML
+  cat > "$DEST/index.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Twitch Chat Settings</title>
+</head>
+<body>
+  <main class="ctc-layout">
+    <aside id="ctc-form-root" class="ctc-sidebar"></aside>
+    <section class="ctc-main">
+      <div class="ctc-btn-row"></div>
+    </section>
+  </main>
+  <script src="./gamebar-bridge.js"></script>
+</body>
+</html>
+HTML
+}
+
+inject_bridge() {
+  python3 - "$DEST/overlay.html" "$DEST/index.html" <<'PY'
+import pathlib, sys
+
+overlay_path = pathlib.Path(sys.argv[1])
+index_path = pathlib.Path(sys.argv[2])
+tag = '<script src="./gamebar-bridge.js"></script>'
+
+overlay_html = overlay_path.read_text(encoding="utf-8")
+if "gamebar-bridge.js" not in overlay_html:
+    target = '<script src="runtime/overlay.js"></script>'
+    if target not in overlay_html:
+        raise SystemExit("overlay.html missing runtime/overlay.js script tag")
+    overlay_html = overlay_html.replace(target, f"{tag}\n  {target}", 1)
+    overlay_path.write_text(overlay_html, encoding="utf-8")
+
+index_html = index_path.read_text(encoding="utf-8")
+if "gamebar-bridge.js" not in index_html:
+    if "</body>" not in index_html:
+        raise SystemExit("index.html missing </body>")
+    index_html = index_html.replace("</body>", f"  {tag}\n</body>", 1)
+    index_path.write_text(index_html, encoding="utf-8")
+PY
+}
+
+sync_now() {
+  rm -rf "$DEST"
+  mkdir -p "$DEST"
+  if dist_dir="$(find_web_dist)"; then
+    cp -R "$dist_dir"/. "$DEST/"
+  else
+    write_fallback_assets
+  fi
+  cp "$BRIDGE" "$DEST/gamebar-bridge.js"
+  inject_bridge
+}
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  if [ ! -f "$DEST/overlay.html" ] || [ ! -f "$DEST/index.html" ] || [ ! -f "$DEST/gamebar-bridge.js" ] || ! cmp -s "$BRIDGE" "$DEST/gamebar-bridge.js"; then
+    sync_now
+  fi
+  cmp -s "$BRIDGE" "$DEST/gamebar-bridge.js" || { echo "WebAssets/gamebar-bridge.js out of sync." >&2; exit 1; }
+  grep -q 'gamebar-bridge.js' "$DEST/overlay.html" || { echo "WebAssets/overlay.html missing bridge script." >&2; exit 1; }
+  grep -q 'gamebar-bridge.js' "$DEST/index.html" || { echo "WebAssets/index.html missing bridge script." >&2; exit 1; }
+  if command -v node >/dev/null 2>&1; then
+    node --check "$BRIDGE"
+  fi
+  exit 0
+fi
+
+sync_now
+echo "Synced web assets to $DEST"
