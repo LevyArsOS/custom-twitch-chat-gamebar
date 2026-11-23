@@ -14,7 +14,6 @@ namespace CustomTwitchChat.GameBar.App;
 /// </summary>
 public static class Program
 {
-    [STAThread]
     public static void Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
@@ -32,8 +31,18 @@ public sealed partial class App : Application
 
     public App()
     {
-        var configPath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "config.json");
-        ConfigStore = new ConfigSyncStore(new FileConfigStorage(configPath));
+        IConfigStorage storage;
+        try
+        {
+            var configPath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "config.json");
+            storage = new FileConfigStorage(configPath);
+        }
+        catch
+        {
+            storage = new InMemoryConfigStorage();
+        }
+
+        ConfigStore = new ConfigSyncStore(storage);
         StateController = new WidgetStateController();
         Bridge = new BridgeProtocol(ConfigStore, StateController);
     }
@@ -44,8 +53,14 @@ public sealed partial class App : Application
 
     protected override void OnActivated(IActivatedEventArgs args)
     {
-        if (args is not XboxGameBarWidgetActivatedEventArgs widgetArgs || !widgetArgs.IsLaunchActivation)
+        if (args is not XboxGameBarWidgetActivatedEventArgs widgetArgs)
         {
+            return;
+        }
+
+        if (!widgetArgs.IsLaunchActivation)
+        {
+            Window.Current.Activate();
             return;
         }
 
@@ -55,12 +70,16 @@ public sealed partial class App : Application
         if (string.Equals(widgetArgs.AppExtensionId, AppManifestValidator.SettingsWidgetId, StringComparison.Ordinal))
         {
             _settingsWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-            rootFrame.Navigate(typeof(SettingsWidgetPage), _settingsWidget);
+            var settingsPage = new SettingsWidgetPage();
+            rootFrame.Content = settingsPage;
+            settingsPage.AttachWidget(_settingsWidget);
         }
         else
         {
             _overlayWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-            rootFrame.Navigate(typeof(OverlayWidgetPage), _overlayWidget);
+            var overlayPage = new OverlayWidgetPage();
+            rootFrame.Content = overlayPage;
+            overlayPage.AttachWidget(_overlayWidget);
         }
 
         Window.Current.Activate();

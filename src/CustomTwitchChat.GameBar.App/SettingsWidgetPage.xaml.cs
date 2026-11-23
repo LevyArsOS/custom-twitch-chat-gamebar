@@ -26,11 +26,16 @@ public sealed partial class SettingsWidgetPage : Page
         Content = root;
     }
 
+    public void AttachWidget(XboxGameBarWidget? widget)
+    {
+        _ = widget;
+        _webView.Navigate(new Uri("ms-appx-web:///WebAssets/index.html"));
+    }
+
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _ = e.Parameter as XboxGameBarWidget;
-        _webView.Navigate(new Uri("ms-appx-web:///WebAssets/index.html"));
+        AttachWidget(e.Parameter as XboxGameBarWidget);
     }
 
     private void SettingsWebView_NavigationCompleted(WebView sender, WebViewNavigationCompletedEventArgs args)

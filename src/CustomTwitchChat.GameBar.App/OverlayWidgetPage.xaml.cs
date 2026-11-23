@@ -32,12 +32,13 @@ public sealed partial class OverlayWidgetPage : Page
         var root = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
         root.Children.Add(_webView);
         Content = root;
+        Unloaded += (_, _) => DetachWidget();
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    public void AttachWidget(XboxGameBarWidget? widget)
     {
-        base.OnNavigatedTo(e);
-        _widget = e.Parameter as XboxGameBarWidget;
+        DetachWidget();
+        _widget = widget;
         if (_widget is not null)
         {
             _widget.PinnedChanged += OnWidgetStateChanged;
@@ -53,9 +54,20 @@ public sealed partial class OverlayWidgetPage : Page
         _webView.Navigate(new Uri(HostApp.ConfigStore.GetSnapshot().OverlayUri));
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        AttachWidget(e.Parameter as XboxGameBarWidget);
+    }
+
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+        DetachWidget();
+    }
+
+    private void DetachWidget()
+    {
         if (_widget is not null)
         {
             _widget.PinnedChanged -= OnWidgetStateChanged;
@@ -63,6 +75,7 @@ public sealed partial class OverlayWidgetPage : Page
             _widget.GameBarDisplayModeChanged -= OnWidgetStateChanged;
             _widget.RequestedOpacityChanged -= OnWidgetStateChanged;
             _widget.SettingsClicked -= OnSettingsClicked;
+            _widget = null;
         }
         HostApp.StateController.OpenSettingsRequested -= OnOpenSettingsRequested;
         HostApp.ConfigStore.ConfigChanged -= OnConfigChanged;

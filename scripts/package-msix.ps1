@@ -18,8 +18,15 @@ if (-not (Test-Path (Join-Path $WebAssetsDir "overlay.html"))) {
     throw "Run scripts/sync-web-assets first to populate src/CustomTwitchChat.GameBar.App/WebAssets."
 }
 
+$ExistingPkg = Get-AppxPackage -Name "CustomTwitchChat.GameBarWidget" -ErrorAction SilentlyContinue
+if ($ExistingPkg) {
+    Write-Host "Unregistering previous development package..."
+    $ExistingPkg | Remove-AppxPackage -ErrorAction SilentlyContinue
+}
+
 if (Test-Path $LayoutDir) { Remove-Item $LayoutDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $LayoutDir | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $LayoutDir "GameBar") | Out-Null
 
 dotnet publish $AppProject `
     -c $Configuration `
@@ -30,6 +37,19 @@ dotnet publish $AppProject `
 
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
+}
+
+$ExePath = Join-Path $LayoutDir "CustomTwitchChat.GameBar.App.exe"
+if (Test-Path $ExePath) {
+    $ExeBytes = [System.IO.File]::ReadAllBytes($ExePath)
+    $PeOffset = [System.BitConverter]::ToInt32($ExeBytes, 0x3C)
+    $DllCharOffset = $PeOffset + 24 + 70
+    $DllChar = [System.BitConverter]::ToUInt16($ExeBytes, $DllCharOffset)
+    $UpdatedChar = [uint16]($DllChar -bor 0x1000)
+    $CharBytes = [System.BitConverter]::GetBytes($UpdatedChar)
+    $ExeBytes[$DllCharOffset] = $CharBytes[0]
+    $ExeBytes[$DllCharOffset + 1] = $CharBytes[1]
+    [System.IO.File]::WriteAllBytes($ExePath, $ExeBytes)
 }
 
 $ManifestXml = (Get-Content (Join-Path $AppDir "Package.appxmanifest") -Raw)
@@ -54,6 +74,8 @@ foreach ($entry in $logos.GetEnumerator()) {
     $bmp.Save((Join-Path $AssetsDir $entry.Key), [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
 }
+
+& icacls.exe $LayoutDir /grant "*S-1-15-2-1:(OI)(CI)(RX)" /T /Q | Out-Null
 
 $MakeAppx = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter "makeappx.exe" -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -match "\\$Platform\\makeappx\.exe$" } |
