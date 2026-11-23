@@ -1,0 +1,11 @@
+bin/
+obj/
+TestResults/
+coverage/
+dist/
+node_modules/
+AppPackages/
+BundleArtifacts/
+*.user
+*.suo
+*.pfx
