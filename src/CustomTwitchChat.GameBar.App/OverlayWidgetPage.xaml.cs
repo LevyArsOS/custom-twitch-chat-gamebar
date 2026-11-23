@@ -1,9 +1,11 @@
 using CustomTwitchChat.GameBar.Core.Bridge;
 using CustomTwitchChat.GameBar.Core.State;
 using Microsoft.Gaming.XboxGameBar;
+using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
 namespace CustomTwitchChat.GameBar.App;
@@ -11,12 +13,26 @@ namespace CustomTwitchChat.GameBar.App;
 /// <summary>
 /// Primary Xbox Game Bar widget view rendering the transparent Twitch chat overlay.
 /// </summary>
-public sealed partial class OverlayWidgetPage : Page
+public sealed class OverlayWidgetPage : Page
 {
+    private readonly WebView _webView;
     private XboxGameBarWidget? _widget;
     private App HostApp => (App)Application.Current;
 
-    public OverlayWidgetPage() => InitializeComponent();
+    public OverlayWidgetPage()
+    {
+        Background = new SolidColorBrush(Colors.Transparent);
+        _webView = new WebView
+        {
+            DefaultBackgroundColor = Colors.Transparent,
+        };
+        _webView.NavigationCompleted += OverlayWebView_NavigationCompleted;
+        _webView.ScriptNotify += OverlayWebView_ScriptNotify;
+
+        var root = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
+        root.Children.Add(_webView);
+        Content = root;
+    }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
@@ -34,7 +50,7 @@ public sealed partial class OverlayWidgetPage : Page
             PushHostSnapshot();
         }
 
-        OverlayWebView.Navigate(new Uri(HostApp.ConfigStore.GetSnapshot().OverlayUri));
+        _webView.Navigate(new Uri(HostApp.ConfigStore.GetSnapshot().OverlayUri));
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -102,7 +118,7 @@ public sealed partial class OverlayWidgetPage : Page
     private Task DispatchEnvelopeAsync(string envelopeJson) =>
         Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
         {
-            await OverlayWebView.InvokeScriptAsync(
+            await _webView.InvokeScriptAsync(
                 "eval",
                 [$"window.__ctcGameBarReceive && window.__ctcGameBarReceive({envelopeJson});"]);
         }).AsTask();

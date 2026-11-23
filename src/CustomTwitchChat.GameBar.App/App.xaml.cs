@@ -10,16 +10,28 @@ using Windows.UI.Xaml.Controls;
 namespace CustomTwitchChat.GameBar.App;
 
 /// <summary>
+/// Program entry point bootstrapping the UWP Xbox Game Bar application.
+/// </summary>
+public static class Program
+{
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+        Application.Start(_ => _ = new App());
+    }
+}
+
+/// <summary>
 /// Application entry point routing Xbox Game Bar activations to Overlay and Settings views.
 /// </summary>
-public sealed partial class App : Application
+public sealed class App : Application
 {
     private XboxGameBarWidget? _overlayWidget;
     private XboxGameBarWidget? _settingsWidget;
 
     public App()
     {
-        InitializeComponent();
         var configPath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "config.json");
         ConfigStore = new ConfigSyncStore(new FileConfigStorage(configPath));
         StateController = new WidgetStateController();

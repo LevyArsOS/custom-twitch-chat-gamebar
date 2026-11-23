@@ -10,17 +10,27 @@ namespace CustomTwitchChat.GameBar.App;
 /// <summary>
 /// Settings Xbox Game Bar widget view hosting the custom-twitch-chat Configurator.
 /// </summary>
-public sealed partial class SettingsWidgetPage : Page
+public sealed class SettingsWidgetPage : Page
 {
+    private readonly WebView _webView;
     private App HostApp => (App)Application.Current;
 
-    public SettingsWidgetPage() => InitializeComponent();
+    public SettingsWidgetPage()
+    {
+        _webView = new WebView();
+        _webView.NavigationCompleted += SettingsWebView_NavigationCompleted;
+        _webView.ScriptNotify += SettingsWebView_ScriptNotify;
+
+        var root = new Grid();
+        root.Children.Add(_webView);
+        Content = root;
+    }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
         _ = e.Parameter as XboxGameBarWidget;
-        SettingsWebView.Navigate(new Uri("ms-appx-web:///WebAssets/index.html"));
+        _webView.Navigate(new Uri("ms-appx-web:///WebAssets/index.html"));
     }
 
     private void SettingsWebView_NavigationCompleted(WebView sender, WebViewNavigationCompletedEventArgs args)
@@ -42,7 +52,7 @@ public sealed partial class SettingsWidgetPage : Page
     private Task DispatchEnvelopeAsync(string envelopeJson) =>
         Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
         {
-            await SettingsWebView.InvokeScriptAsync(
+            await _webView.InvokeScriptAsync(
                 "eval",
                 [$"window.__ctcGameBarReceive && window.__ctcGameBarReceive({envelopeJson});"]);
         }).AsTask();
