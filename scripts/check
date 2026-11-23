@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+if ! command -v dotnet >/dev/null 2>&1 && [ -x "$HOME/.local/bin/dotnet" ]; then
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
+command -v dotnet >/dev/null 2>&1 || { echo "dotnet SDK not found (see global.json)" >&2; exit 1; }
+
+for candidate in "$ROOT/../ai-workspace/lib/content_scan.py" "$ROOT/../../../lib/content_scan.py"; do
+  if [ -f "$candidate" ]; then
+    python3 "$candidate" tree HEAD
+    break
+  fi
+done
+
+if [ -x "$ROOT/scripts/sync-web-assets" ]; then
+  "$ROOT/scripts/sync-web-assets" --check
+fi
+
+rm -rf "$ROOT/TestResults"
+dotnet restore --nologo
+dotnet build --no-restore --nologo -warnaserror -c Release
+dotnet test --no-build --nologo -c Release --collect:"XPlat Code Coverage" --results-directory "$ROOT/TestResults"
+
+python3 - "$ROOT/TestResults" <<'PY'
+import glob
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+results_dir = sys.argv[1]
+files = sorted(
+    glob.glob(os.path.join(results_dir, "**", "coverage.cobertura.xml"), recursive=True),
+    key=os.path.getmtime,
+)
+if not files:
+    print("No coverage.cobertura.xml generated.", file=sys.stderr)
+    sys.exit(1)
+
+tree = ET.parse(files[-1])
+root = tree.getroot()
+line_rate = float(root.attrib.get("line-rate", "0"))
+branch_rate = float(root.attrib.get("branch-rate", "0"))
+lines_valid = int(root.attrib.get("lines-valid", "0"))
+branches_valid = int(root.attrib.get("branches-valid", "0"))
+
+print(f"Coverage: lines={line_rate * 100:.2f}% ({lines_valid} valid), branches={branch_rate * 100:.2f}% ({branches_valid} valid)")
+
+if lines_valid > 0 and line_rate < 0.90:
+    print(f"Line coverage {line_rate * 100:.2f}% is below 90.00%.", file=sys.stderr)
+    sys.exit(1)
+if branches_valid > 0 and branch_rate < 0.90:
+    print(f"Branch coverage {branch_rate * 100:.2f}% is below 90.00%.", file=sys.stderr)
+    sys.exit(1)
+PY
