@@ -18,7 +18,7 @@ public static class Program
     public static void Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ => { _ = new App(); });
+        Application.Start(static _ => new App());
     }
 }
 
