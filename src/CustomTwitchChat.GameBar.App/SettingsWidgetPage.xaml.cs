@@ -30,7 +30,6 @@ public sealed partial class SettingsWidgetPage
         _webView = new WebView
         {
             DefaultBackgroundColor = Colors.Transparent,
-            IsTabStop = false,
             AllowFocusOnInteraction = false,
             IsHitTestVisible = false,
         };

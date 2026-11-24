@@ -98,7 +98,7 @@ public sealed partial class SettingsWidgetPage
         return root;
     }
 
-    private UIElement BuildPreviewPane()
+    private FrameworkElement BuildPreviewPane()
     {
         var grid = new Grid
         {
