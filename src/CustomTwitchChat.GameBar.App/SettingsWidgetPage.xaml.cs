@@ -63,7 +63,10 @@ public sealed partial class SettingsWidgetPage
         _authEnabledCheck = CreateCheck("Enable Twitch Login (OAuth)", defaultChecked: false);
         _authPointsCheck = CreateCheck("Channel Points", defaultChecked: false);
         _authFollowsCheck = CreateCheck("Follows", defaultChecked: false);
-        _clientIdBox = CreateBoundTextBox("Twitch Public Client ID");
+        _clientIdBox = CreateBoundTextBox(
+            string.IsNullOrEmpty(BundledTwitchClientId)
+                ? "Twitch Public Client ID"
+                : "Optional: override default Twitch Client ID");
         _statusText = new TextBlock
         {
             Foreground = new SolidColorBrush(Color.FromArgb(255, 167, 139, 250)),

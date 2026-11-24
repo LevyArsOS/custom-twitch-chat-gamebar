@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main, develop]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -27,10 +29,38 @@ jobs:
         run: ./scripts/sync-web-assets --check
       - name: Run core tests
         run: dotnet test CustomTwitchChat.GameBar.sln -c Release --nologo
-      - name: Build UWP MSIX package
+      - name: Build signed end-user MSIX bundle
         shell: pwsh
-        run: .\scripts\package-msix.ps1 -Configuration Release -Platform x64
+        env:
+          TWITCH_CLIENT_ID: ${{ vars.TWITCH_CLIENT_ID || secrets.TWITCH_CLIENT_ID }}
+          MSIX_PFX_BASE64: ${{ secrets.MSIX_PFX_BASE64 }}
+          MSIX_PFX_PASSWORD: ${{ secrets.MSIX_PFX_PASSWORD }}
+        run: .\scripts\build-release-msix.ps1 -Configuration Release -Platform x64
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: custom-twitch-chat-gamebar-msix-x64
-          path: AppPackages/**/*
+          name: custom-twitch-chat-gamebar-release-x64
+          path: |
+            AppPackages/CustomTwitchChat.GameBar-*.zip
+            AppPackages/Release/*.msix
+
+  attach-release-assets:
+    name: attach-release-assets
+    needs: package-msix
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: custom-twitch-chat-gamebar-release-x64
+          path: release-assets
+      - name: Upload MSIX bundle to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            release-assets/*.zip \
+            release-assets/Release/*.msix \
+            --repo "${{ github.repository }}" \
+            --clobber
