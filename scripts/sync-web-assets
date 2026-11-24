@@ -5,18 +5,33 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/src/CustomTwitchChat.GameBar.App/WebAssets"
 BRIDGE="$ROOT/src/WebBridge/gamebar-bridge.js"
 CHECK_ONLY=0
+REQUIRE_REAL=0
 
 for arg in "$@"; do
   case "$arg" in
     --check) CHECK_ONLY=1 ;;
+    --require-real) REQUIRE_REAL=1 ;;
     *) echo "Unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
 
+PY_BIN=""
+if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+  PY_BIN="python3"
+elif command -v python >/dev/null 2>&1 && python -c "import sys" >/dev/null 2>&1; then
+  PY_BIN="python"
+else
+  echo "Python interpreter not found." >&2
+  exit 1
+fi
+
 find_web_repo() {
   local candidates=()
-  [ -n "${CTC_WEB_DIR:-}" ] && candidates+=("$CTC_WEB_DIR")
-  candidates+=("$ROOT/../custom-twitch-chat" "$ROOT/../../../custom-twitch-chat" "$ROOT/../../../../custom-twitch-chat")
+  if [ -n "${CTC_WEB_DIR:-}" ]; then
+    candidates+=("$CTC_WEB_DIR")
+  else
+    candidates+=("$ROOT/../custom-twitch-chat" "$ROOT/../../../custom-twitch-chat" "$ROOT/../../../../custom-twitch-chat")
+  fi
   for dir in "${candidates[@]}"; do
     if [ -f "$dir/dist/overlay.html" ] && [ -f "$dir/dist/index.html" ]; then
       echo "$dir"
@@ -75,21 +90,31 @@ HTML
 
 transpile_for_edge18() {
   local web_repo="$1"
-  local esbuild_bin=""
+  local esbuild_cmd=()
   for candidate in \
+    "$web_repo/node_modules/@esbuild/win32-x64/esbuild.exe" \
     "$web_repo/node_modules/@esbuild/linux-x64/bin/esbuild" \
     "$web_repo/node_modules/.bin/esbuild"; do
     if [ -x "$candidate" ]; then
-      esbuild_bin="$candidate"
+      esbuild_cmd=("$candidate")
       break
     fi
   done
-  [ -n "$esbuild_bin" ] || return 0
+  if [ "${#esbuild_cmd[@]}" -eq 0 ] && [ -f "$web_repo/node_modules/esbuild/bin/esbuild" ]; then
+    esbuild_cmd=(node "$web_repo/node_modules/esbuild/bin/esbuild")
+  fi
+  if [ "${#esbuild_cmd[@]}" -eq 0 ]; then
+    if [ "$REQUIRE_REAL" -eq 1 ]; then
+      echo "ERROR: esbuild binary not found in $web_repo/node_modules" >&2
+      exit 1
+    fi
+    return 0
+  fi
 
   if [ -f "$DEST/runtime/overlay.js" ]; then
-    "$esbuild_bin" "$DEST/runtime/overlay.js" --target=edge18 --outfile="$DEST/runtime/overlay.edge18.js" --log-level=silent
+    "${esbuild_cmd[@]}" "$DEST/runtime/overlay.js" --target=edge18 --outfile="$DEST/runtime/overlay.edge18.js" --log-level=silent
     mv "$DEST/runtime/overlay.edge18.js" "$DEST/runtime/overlay.js"
-    python3 - "$DEST/runtime/overlay.js" <<'PY'
+    "$PY_BIN" - "$DEST/runtime/overlay.js" <<'PY'
 import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 txt = p.read_text(encoding="utf-8")
@@ -108,13 +133,13 @@ PY
 
   for idx_js in "$DEST"/assets/index-*.js; do
     [ -f "$idx_js" ] || continue
-    "$esbuild_bin" "$idx_js" --target=edge18 --format=iife --outfile="$idx_js.edge18.js" --log-level=silent
+    "${esbuild_cmd[@]}" "$idx_js" --target=edge18 --format=iife --outfile="$idx_js.edge18.js" --log-level=silent
     mv "$idx_js.edge18.js" "$idx_js"
   done
 }
 
 inject_bridge() {
-  python3 - "$DEST/overlay.html" "$DEST/index.html" <<'PY'
+  "$PY_BIN" - "$DEST/overlay.html" "$DEST/index.html" <<'PY'
 import pathlib, re, sys
 
 overlay_path = pathlib.Path(sys.argv[1])
@@ -152,10 +177,23 @@ sync_now() {
     cp -R "$web_repo/dist"/. "$DEST/"
     transpile_for_edge18 "$web_repo"
   else
+    if [ "$REQUIRE_REAL" -eq 1 ]; then
+      echo "ERROR: custom-twitch-chat dist bundle not found (--require-real)." >&2
+      exit 1
+    fi
     write_fallback_assets
   fi
   cp "$BRIDGE" "$DEST/gamebar-bridge.js"
   inject_bridge
+  if [ "$REQUIRE_REAL" -eq 1 ]; then
+    local overlay_bytes
+    overlay_bytes="$(wc -c < "$DEST/runtime/overlay.js")"
+    if [ "$overlay_bytes" -lt 10000 ]; then
+      echo "ERROR: WebAssets/runtime/overlay.js is too small ($overlay_bytes bytes); expected real runtime." >&2
+      exit 1
+    fi
+    echo "Verified real WebAssets/runtime/overlay.js ($overlay_bytes bytes)"
+  fi
 }
 
 if [ "$CHECK_ONLY" -eq 1 ]; then

@@ -21,12 +21,26 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout custom-twitch-chat web runtime
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: LevyArsOS/custom-twitch-chat
+          path: custom-twitch-chat-web
+      - name: Build custom-twitch-chat web runtime
+        working-directory: custom-twitch-chat-web
+        env:
+          VITE_TWITCH_CLIENT_ID: ${{ vars.TWITCH_CLIENT_ID || secrets.TWITCH_CLIENT_ID }}
+        run: |
+          npm ci
+          npm run build
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
-      - name: Sync web assets
+      - name: Sync and transpile real web assets
         shell: bash
-        run: ./scripts/sync-web-assets --check
+        env:
+          CTC_WEB_DIR: ${{ github.workspace }}/custom-twitch-chat-web
+        run: ./scripts/sync-web-assets --require-real
       - name: Run core tests
         run: dotnet test CustomTwitchChat.GameBar.sln -c Release --nologo
       - name: Build signed end-user MSIX bundle
