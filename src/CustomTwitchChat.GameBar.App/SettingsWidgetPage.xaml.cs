@@ -16,6 +16,7 @@ namespace CustomTwitchChat.GameBar.App;
 public sealed partial class SettingsWidgetPage
 {
     private readonly App _hostApp;
+    private readonly bool _isDesktopMode;
     private readonly WebView _webView;
     private readonly TextBox _channelBox;
     private readonly TextBlock _statusText;
@@ -23,9 +24,10 @@ public sealed partial class SettingsWidgetPage
     private Dictionary<string, object> _workingConfig;
     private bool _hydrating;
 
-    public SettingsWidgetPage(App hostApp)
+    public SettingsWidgetPage(App hostApp, bool isDesktopMode = false)
     {
         _hostApp = hostApp;
+        _isDesktopMode = isDesktopMode;
         _workingConfig = new Dictionary<string, object>(_hostApp.ConfigStore.GetSnapshot().Config, StringComparer.Ordinal);
         _webView = new WebView
         {
@@ -77,9 +79,22 @@ public sealed partial class SettingsWidgetPage
             Background = new SolidColorBrush(Color.FromArgb(255, 15, 15, 20)),
             Content = BuildLayout(),
         };
+        _hostApp.ConfigStore.ConfigChanged += OnExternalStoreChanged;
     }
 
     public Page View { get; }
+
+    public void SetStatus(string text) => _statusText.Text = text;
+
+    private void OnExternalStoreChanged(CustomTwitchChat.GameBar.Core.Bridge.ConfigSnapshot snap)
+    {
+        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+        {
+            _workingConfig = new Dictionary<string, object>(snap.Config, StringComparer.Ordinal);
+            HydrateControlsFromConfig();
+            PushConfigToPreview();
+        });
+    }
 
     public void AttachWidget(XboxGameBarWidget? widget)
     {

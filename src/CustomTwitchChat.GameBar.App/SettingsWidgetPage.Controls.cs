@@ -18,6 +18,35 @@ public sealed partial class SettingsWidgetPage
 
         var formStack = new StackPanel { Spacing = 8, Padding = new Thickness(0, 0, 12, 12) };
 
+        if (!_isDesktopMode)
+        {
+            var desktopBanner = new StackPanel
+            {
+                Spacing = 6,
+                Padding = new Thickness(10),
+                Background = new SolidColorBrush(Color.FromArgb(255, 28, 24, 44)),
+            };
+            desktopBanner.Children.Add(new TextBlock
+            {
+                Text = "Full Configurator (Web Import, File Import, Paste & Twitch Login)",
+                Foreground = new SolidColorBrush(Colors.White),
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            desktopBanner.Children.Add(new TextBlock
+            {
+                Text = "Xbox Game Bar blocks Ctrl+V, clipboard and file pickers. Open the Desktop Configurator window to paste configs, import files or log in with Twitch.",
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 190, 190, 210)),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            desktopBanner.Children.Add(CreateButton(
+                "Open Full Configurator (Desktop Window)",
+                (_, _) => OpenFullConfiguratorAsync(),
+                primary: true));
+            formStack.Children.Add(desktopBanner);
+        }
+
         var chanRow = new Grid();
         chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -30,6 +59,25 @@ public sealed partial class SettingsWidgetPage
         formStack.Children.Add(CreateSectionHeader("Twitch Channel"));
         formStack.Children.Add(chanRow);
         formStack.Children.Add(_statusText);
+
+        if (_isDesktopMode)
+        {
+            formStack.Children.Add(CreateSectionHeader("Configure on Web or Import (.json / .html / #c=1...)"));
+            var webBtns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            webBtns.Children.Add(CreateButton("Open Web Configurator", (_, _) => OpenWebConfiguratorAsync(), primary: true));
+            webBtns.Children.Add(CreateButton("Import File (.json / .html)", (_, _) => LoadFileConfigAsync()));
+            formStack.Children.Add(webBtns);
+
+            var importRow = new Grid();
+            importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(_importBox, 0);
+            var importBtn = CreateButton("Paste & Apply", (_, _) => PasteAndImportConfig());
+            Grid.SetColumn(importBtn, 1);
+            importRow.Children.Add(_importBox);
+            importRow.Children.Add(importBtn);
+            formStack.Children.Add(importRow);
+        }
 
         formStack.Children.Add(CreateSectionHeader("Preset & Language"));
         formStack.Children.Add(CreateTwoColRow("Theme Preset", _presetCombo, "Language", _langCombo));
@@ -54,41 +102,34 @@ public sealed partial class SettingsWidgetPage
         eventsGrid.Children.Add(_streaksCheck);
         formStack.Children.Add(eventsGrid);
 
-        formStack.Children.Add(CreateSectionHeader("Twitch Login (OAuth Device Flow)"));
-        var authChecks = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        authChecks.Children.Add(_authEnabledCheck);
-        authChecks.Children.Add(_authPointsCheck);
-        authChecks.Children.Add(_authFollowsCheck);
-        formStack.Children.Add(authChecks);
+        if (_isDesktopMode)
+        {
+            formStack.Children.Add(CreateSectionHeader("Twitch Login (OAuth Device Flow)"));
+            var authChecks = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            authChecks.Children.Add(_authEnabledCheck);
+            authChecks.Children.Add(_authPointsCheck);
+            authChecks.Children.Add(_authFollowsCheck);
+            formStack.Children.Add(authChecks);
 
-        var clientRow = new Grid();
-        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(_clientIdBox, 0);
-        var loginBtn = CreateButton("Login Twitch", (_, _) => StartTwitchDeviceLoginAsync(), primary: true);
-        var devBtn = CreateButton("Dev Console", (_, _) => OpenTwitchDevConsoleAsync());
-        var reloginBtn = CreateButton("Relogin", (_, _) => ForceRelogin());
-        Grid.SetColumn(loginBtn, 1);
-        Grid.SetColumn(devBtn, 2);
-        Grid.SetColumn(reloginBtn, 3);
-        clientRow.Children.Add(_clientIdBox);
-        clientRow.Children.Add(loginBtn);
-        clientRow.Children.Add(devBtn);
-        clientRow.Children.Add(reloginBtn);
-        formStack.Children.Add(clientRow);
+            var clientRow = new Grid();
+            clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(_clientIdBox, 0);
+            var pasteClientBtn = CreateButton("Paste", (_, _) => PasteClientIdFromClipboard());
+            var devBtn = CreateButton("Dev Console", (_, _) => OpenTwitchDevConsoleAsync());
+            Grid.SetColumn(pasteClientBtn, 1);
+            Grid.SetColumn(devBtn, 2);
+            clientRow.Children.Add(_clientIdBox);
+            clientRow.Children.Add(pasteClientBtn);
+            clientRow.Children.Add(devBtn);
+            formStack.Children.Add(clientRow);
 
-        formStack.Children.Add(CreateSectionHeader("Import via PowerShell: .\\scripts\\apply-config.ps1 \"#c=1...\""));
-        var importRow = new Grid();
-        importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(_importBox, 0);
-        var importBtn = CreateButton("Apply Input", (_, _) => PasteAndImportConfig());
-        Grid.SetColumn(importBtn, 1);
-        importRow.Children.Add(_importBox);
-        importRow.Children.Add(importBtn);
-        formStack.Children.Add(importRow);
+            var authActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            authActions.Children.Add(CreateButton("Login with Twitch", (_, _) => StartTwitchDeviceLoginAsync(), primary: true));
+            authActions.Children.Add(CreateButton("Relogin", (_, _) => ForceRelogin()));
+            formStack.Children.Add(authActions);
+        }
 
         var scroll = new ScrollViewer
         {

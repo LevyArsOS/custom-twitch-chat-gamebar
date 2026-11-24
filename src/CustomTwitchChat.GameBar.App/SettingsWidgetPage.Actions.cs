@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.System;
 using Windows.UI.Xaml.Controls;
 
 namespace CustomTwitchChat.GameBar.App;
@@ -79,6 +82,41 @@ public sealed partial class SettingsWidgetPage
         {
             _channelBox.Text = txt;
             ApplyToOverlay();
+        }
+    }
+
+    private async void OpenFullConfiguratorAsync()
+    {
+        await Launcher.LaunchUriAsync(new Uri("ctc-gamebar://configure"));
+    }
+
+    private async void OpenWebConfiguratorAsync()
+    {
+        await Launcher.LaunchUriAsync(new Uri("https://levyarsos.github.io/custom-twitch-chat/"));
+        _statusText.Text = "Opened web configurator. Copy the OBS URL (#c=1...) or export chat.data.json and import it here.";
+    }
+
+    private async void LoadFileConfigAsync()
+    {
+        try
+        {
+            var picker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.Downloads,
+                ViewMode = PickerViewMode.List,
+            };
+            picker.FileTypeFilter.Add(".json");
+            picker.FileTypeFilter.Add(".html");
+            picker.FileTypeFilter.Add(".htm");
+            picker.FileTypeFilter.Add(".txt");
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) return;
+            var content = await FileIO.ReadTextAsync(file);
+            if (!string.IsNullOrWhiteSpace(content)) ImportRawText(content);
+        }
+        catch (Exception ex)
+        {
+            _statusText.Text = $"File import failed: {ex.Message}";
         }
     }
 
