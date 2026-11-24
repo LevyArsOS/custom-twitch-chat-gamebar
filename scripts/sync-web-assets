@@ -94,6 +94,10 @@ import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 txt = p.read_text(encoding="utf-8")
 txt = re.sub(r"\|\|[A-Za-z0-9_$]+\.origin!==[A-Za-z0-9_$]+\.location\.origin", "", txt)
+txt = txt.replace(
+    r"/(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF\u2B50\u2B55])/u",
+    r"/(\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F\uDE80-\uDEFF]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF\u2B50\u2B55])/"
+)
 p.write_text(txt, encoding="utf-8")
 PY
   fi
@@ -114,12 +118,13 @@ index_path = pathlib.Path(sys.argv[2])
 bridge_tag = '<script src="./gamebar-bridge.js"></script>'
 
 overlay_html = overlay_path.read_text(encoding="utf-8")
+overlay_html = re.sub(r'\s*<meta http-equiv="Content-Security-Policy"[^>]*>\s*', "\n", overlay_html)
 if "gamebar-bridge.js" not in overlay_html:
     target = '<script src="runtime/overlay.js"></script>'
     if target not in overlay_html:
         raise SystemExit("overlay.html missing runtime/overlay.js script tag")
     overlay_html = overlay_html.replace(target, f"{bridge_tag}\n  {target}", 1)
-    overlay_path.write_text(overlay_html, encoding="utf-8")
+overlay_path.write_text(overlay_html, encoding="utf-8")
 
 index_html = index_path.read_text(encoding="utf-8")
 mod_match = re.search(r'<script[^>]+src="(\./assets/index-[^"]+\.js)"[^>]*></script>\s*', index_html)

@@ -38,6 +38,36 @@
       return decodeURIComponent(escape(bin));
     };
   }
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'undefined') {
+    Intl.Segmenter = function () {};
+    Intl.Segmenter.prototype.segment = function (str) {
+      return Array.from(String(str || '')).map(function (ch) { return { segment: ch }; });
+    };
+  }
+  if (typeof Element !== 'undefined') {
+    if (!Element.prototype.remove) {
+      Element.prototype.remove = function () {
+        if (this.parentNode) this.parentNode.removeChild(this);
+      };
+    }
+    if (!Element.prototype.prepend) {
+      Element.prototype.prepend = function () {
+        var first = this.firstChild;
+        for (var i = 0; i < arguments.length; i += 1) {
+          var item = arguments[i];
+          var node = typeof item === 'string' ? document.createTextNode(item) : item;
+          this.insertBefore(node, first);
+        }
+      };
+    }
+    if (!Element.prototype.replaceWith) {
+      Element.prototype.replaceWith = function (node) {
+        if (this.parentNode) {
+          this.parentNode.replaceChild(typeof node === 'string' ? document.createTextNode(node) : node, this);
+        }
+      };
+    }
+  }
   if (typeof Element !== 'undefined' && !Element.prototype.replaceChildren) {
     Element.prototype.replaceChildren = function () {
       while (this.firstChild) this.removeChild(this.firstChild);
@@ -230,13 +260,34 @@
       channel.onmessage = function (ev) { handleEnvelope(ev.data); };
     }
 
+    win.addEventListener && win.addEventListener('error', function (ev) {
+      postToHost(win, { type: 'js:error', message: ev && ev.message, lineno: ev && ev.lineno });
+    });
+
     if (isOverlay && !isPreview) {
       injectOverlayStyles(doc);
       var savedCfg = readSavedConfig(storage);
       if (savedCfg && (!win.location || !win.location.hash || win.location.hash === '#c=1.e30')) {
         win.__CTC_CONFIG__ = savedCfg;
       }
-      updateStatusBanner(doc, savedCfg);
+      var activeCfg = savedCfg;
+      if (win.location && win.location.hash && win.location.hash.indexOf('#c=1.') === 0) {
+        try {
+          var token = win.location.hash.slice(5).replace(/-/g, '+').replace(/_/g, '/');
+          while (token.length % 4 !== 0) token += '=';
+          activeCfg = JSON.parse(new root.TextDecoder().decode(
+            Uint8Array.from(atob(token), function (c) { return c.charCodeAt(0); })
+          ));
+        } catch (_) { /* ignore */ }
+      }
+      updateStatusBanner(doc, activeCfg);
+      var chatEl = doc.getElementById('chat-container');
+      if (chatEl && typeof MutationObserver !== 'undefined') {
+        new MutationObserver(function () {
+          var b = doc.getElementById('ctc-gb-status');
+          if (b && chatEl.children && chatEl.children.length > 0) b.style.display = 'none';
+        }).observe(chatEl, { childList: true });
+      }
       postToHost(win, { type: 'state:query' });
     }
 
