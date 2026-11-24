@@ -13,13 +13,13 @@ for arg in "$@"; do
   esac
 done
 
-find_web_dist() {
+find_web_repo() {
   local candidates=()
   [ -n "${CTC_WEB_DIR:-}" ] && candidates+=("$CTC_WEB_DIR")
   candidates+=("$ROOT/../custom-twitch-chat" "$ROOT/../../../custom-twitch-chat" "$ROOT/../../../../custom-twitch-chat")
   for dir in "${candidates[@]}"; do
     if [ -f "$dir/dist/overlay.html" ] && [ -f "$dir/dist/index.html" ]; then
-      echo "$dir/dist"
+      echo "$dir"
       return 0
     fi
   done
@@ -73,36 +73,75 @@ HTML
 HTML
 }
 
+transpile_for_edge18() {
+  local web_repo="$1"
+  local esbuild_bin=""
+  for candidate in \
+    "$web_repo/node_modules/@esbuild/linux-x64/bin/esbuild" \
+    "$web_repo/node_modules/.bin/esbuild"; do
+    if [ -x "$candidate" ]; then
+      esbuild_bin="$candidate"
+      break
+    fi
+  done
+  [ -n "$esbuild_bin" ] || return 0
+
+  if [ -f "$DEST/runtime/overlay.js" ]; then
+    "$esbuild_bin" "$DEST/runtime/overlay.js" --target=edge18 --outfile="$DEST/runtime/overlay.edge18.js" --log-level=silent
+    mv "$DEST/runtime/overlay.edge18.js" "$DEST/runtime/overlay.js"
+    python3 - "$DEST/runtime/overlay.js" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+txt = p.read_text(encoding="utf-8")
+txt = re.sub(r"\|\|[A-Za-z0-9_$]+\.origin!==[A-Za-z0-9_$]+\.location\.origin", "", txt)
+p.write_text(txt, encoding="utf-8")
+PY
+  fi
+
+  for idx_js in "$DEST"/assets/index-*.js; do
+    [ -f "$idx_js" ] || continue
+    "$esbuild_bin" "$idx_js" --target=edge18 --format=iife --outfile="$idx_js.edge18.js" --log-level=silent
+    mv "$idx_js.edge18.js" "$idx_js"
+  done
+}
+
 inject_bridge() {
   python3 - "$DEST/overlay.html" "$DEST/index.html" <<'PY'
-import pathlib, sys
+import pathlib, re, sys
 
 overlay_path = pathlib.Path(sys.argv[1])
 index_path = pathlib.Path(sys.argv[2])
-tag = '<script src="./gamebar-bridge.js"></script>'
+bridge_tag = '<script src="./gamebar-bridge.js"></script>'
 
 overlay_html = overlay_path.read_text(encoding="utf-8")
 if "gamebar-bridge.js" not in overlay_html:
     target = '<script src="runtime/overlay.js"></script>'
     if target not in overlay_html:
         raise SystemExit("overlay.html missing runtime/overlay.js script tag")
-    overlay_html = overlay_html.replace(target, f"{tag}\n  {target}", 1)
+    overlay_html = overlay_html.replace(target, f"{bridge_tag}\n  {target}", 1)
     overlay_path.write_text(overlay_html, encoding="utf-8")
 
 index_html = index_path.read_text(encoding="utf-8")
+mod_match = re.search(r'<script[^>]+src="(\./assets/index-[^"]+\.js)"[^>]*></script>\s*', index_html)
+mod_src = mod_match.group(1) if mod_match else None
+if mod_match:
+    index_html = index_html[:mod_match.start()] + index_html[mod_match.end():]
+index_html = index_html.replace(' crossorigin href="', ' href="')
 if "gamebar-bridge.js" not in index_html:
-    if "</body>" not in index_html:
-        raise SystemExit("index.html missing </body>")
-    index_html = index_html.replace("</body>", f"  {tag}\n</body>", 1)
-    index_path.write_text(index_html, encoding="utf-8")
+    scripts = f"  {bridge_tag}\n"
+    if mod_src:
+        scripts += f'  <script src="{mod_src}"></script>\n'
+    index_html = index_html.replace("</body>", f"{scripts}</body>", 1)
+index_path.write_text(index_html, encoding="utf-8")
 PY
 }
 
 sync_now() {
   rm -rf "$DEST"
   mkdir -p "$DEST"
-  if dist_dir="$(find_web_dist)"; then
-    cp -R "$dist_dir"/. "$DEST/"
+  if web_repo="$(find_web_repo)"; then
+    cp -R "$web_repo/dist"/. "$DEST/"
+    transpile_for_edge18 "$web_repo"
   else
     write_fallback_assets
   fi

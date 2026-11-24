@@ -46,6 +46,7 @@ public sealed class SettingsWidgetPage
 
     private void SettingsWebView_ScriptNotify(object sender, NotifyEventArgs e)
     {
+        App.Trace($"SettingsWebView ScriptNotify: {e.Value}");
         var result = _hostApp.Bridge.HandleIncomingMessage(e.Value);
         if (result.Handled && result.ResponseJson is not null)
         {

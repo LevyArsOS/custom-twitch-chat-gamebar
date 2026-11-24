@@ -116,6 +116,7 @@ public sealed class OverlayWidgetPage
 
     private void OverlayWebView_ScriptNotify(object sender, NotifyEventArgs e)
     {
+        App.Trace($"OverlayWebView ScriptNotify: {e.Value}");
         var result = _hostApp.Bridge.HandleIncomingMessage(e.Value);
         if (result.Handled && result.ResponseJson is not null)
         {
