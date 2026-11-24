@@ -42,7 +42,7 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
       <uap:ApplicationContentUriRules>
-        <uap:Rule Type="include" WindowsRuntimeAccess="all" Match="ms-appx-web:///" />
+        <uap:Rule Type="include" WindowsRuntimeAccess="all" Match="ms-appx-web:///*" />
       </uap:ApplicationContentUriRules>
       <Extensions>
         <uap3:Extension Category="windows.appExtension">

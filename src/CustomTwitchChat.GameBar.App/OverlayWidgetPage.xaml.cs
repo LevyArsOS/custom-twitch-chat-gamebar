@@ -24,6 +24,8 @@ public sealed class OverlayWidgetPage
         _webView = new WebView
         {
             DefaultBackgroundColor = Colors.Transparent,
+            IsTabStop = false,
+            AllowFocusOnInteraction = false,
         };
         _webView.NavigationCompleted += OverlayWebView_NavigationCompleted;
         _webView.ScriptNotify += OverlayWebView_ScriptNotify;
