@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="$ROOT/src/CustomTwitchChat.GameBar.App/WebAssets"
+BRIDGE="$ROOT/src/WebBridge/gamebar-bridge.js"
+CHECK_ONLY=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --check) CHECK_ONLY=1 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+find_web_repo() {
+  local candidates=()
+  [ -n "${CTC_WEB_DIR:-}" ] && candidates+=("$CTC_WEB_DIR")
+  candidates+=("$ROOT/../custom-twitch-chat" "$ROOT/../../../custom-twitch-chat" "$ROOT/../../../../custom-twitch-chat")
+  for dir in "${candidates[@]}"; do
+    if [ -f "$dir/dist/overlay.html" ] && [ -f "$dir/dist/index.html" ]; then
+      echo "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+write_fallback_assets() {
+  mkdir -p "$DEST/runtime"
+  cat > "$DEST/runtime/overlay.css" <<'CSS'
+html, body { margin: 0; padding: 0; background: transparent; color: #fff; font-family: Montserrat, sans-serif; }
+CSS
+  cat > "$DEST/runtime/overlay.js" <<'JS'
+(function () { window.__CTC_RUNTIME_BOOTED__ = true; }());
+JS
+  cat > "$DEST/overlay.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://irc-ws.chat.twitch.tv wss://eventsub.wss.twitch.tv https://id.twitch.tv https://api.twitch.tv; object-src 'none'; base-uri 'none';">
+  <title>Custom Twitch Chat Overlay</title>
+  <link rel="stylesheet" href="runtime/overlay.css">
+</head>
+<body>
+  <div id="ctc-auth-root"></div>
+  <div id="chat-container" class="main-container"></div>
+  <script src="./gamebar-bridge.js"></script>
+  <script src="runtime/overlay.js"></script>
+</body>
+</html>
+HTML
+  cat > "$DEST/index.html" <<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Twitch Chat Settings</title>
+</head>
+<body>
+  <main class="ctc-layout">
+    <aside id="ctc-form-root" class="ctc-sidebar"></aside>
+    <section class="ctc-main">
+      <div class="ctc-btn-row"></div>
+    </section>
+  </main>
+  <script src="./gamebar-bridge.js"></script>
+</body>
+</html>
+HTML
+}
+
+transpile_for_edge18() {
+  local web_repo="$1"
+  local esbuild_bin=""
+  for candidate in \
+    "$web_repo/node_modules/@esbuild/linux-x64/bin/esbuild" \
+    "$web_repo/node_modules/.bin/esbuild"; do
+    if [ -x "$candidate" ]; then
+      esbuild_bin="$candidate"
+      break
+    fi
+  done
+  [ -n "$esbuild_bin" ] || return 0
+
+  if [ -f "$DEST/runtime/overlay.js" ]; then
+    "$esbuild_bin" "$DEST/runtime/overlay.js" --target=edge18 --outfile="$DEST/runtime/overlay.edge18.js" --log-level=silent
+    mv "$DEST/runtime/overlay.edge18.js" "$DEST/runtime/overlay.js"
+    python3 - "$DEST/runtime/overlay.js" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1])
+txt = p.read_text(encoding="utf-8")
+txt = re.sub(r"\|\|[A-Za-z0-9_$]+\.origin!==[A-Za-z0-9_$]+\.location\.origin", "", txt)
+txt = txt.replace(
+    'new RegExp("(\\\\p{Extended_Pictographic}|\\\\p{Emoji_Presentation}|[\\\\u2600-\\\\u27BF\\\\u2B50\\\\u2B55])", "u")',
+    r"/([\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\u2B50-\u2B55])/"
+)
+txt = txt.replace(
+    r"/(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF\u2B50\u2B55])/u",
+    r"/([\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\u2B50-\u2B55])/"
+)
+p.write_text(txt, encoding="utf-8")
+PY
+  fi
+
+  for idx_js in "$DEST"/assets/index-*.js; do
+    [ -f "$idx_js" ] || continue
+    "$esbuild_bin" "$idx_js" --target=edge18 --format=iife --outfile="$idx_js.edge18.js" --log-level=silent
+    mv "$idx_js.edge18.js" "$idx_js"
+  done
+}
+
+inject_bridge() {
+  python3 - "$DEST/overlay.html" "$DEST/index.html" <<'PY'
+import pathlib, re, sys
+
+overlay_path = pathlib.Path(sys.argv[1])
+index_path = pathlib.Path(sys.argv[2])
+bridge_tag = '<script src="./gamebar-bridge.js"></script>'
+
+overlay_html = overlay_path.read_text(encoding="utf-8")
+overlay_html = re.sub(r'\s*<meta http-equiv="Content-Security-Policy"[^>]*>\s*', "\n", overlay_html)
+if "gamebar-bridge.js" not in overlay_html:
+    target = '<script src="runtime/overlay.js"></script>'
+    if target not in overlay_html:
+        raise SystemExit("overlay.html missing runtime/overlay.js script tag")
+    overlay_html = overlay_html.replace(target, f"{bridge_tag}\n  {target}", 1)
+overlay_path.write_text(overlay_html, encoding="utf-8")
+
+index_html = index_path.read_text(encoding="utf-8")
+mod_match = re.search(r'<script[^>]+src="(\./assets/index-[^"]+\.js)"[^>]*></script>\s*', index_html)
+mod_src = mod_match.group(1) if mod_match else None
+if mod_match:
+    index_html = index_html[:mod_match.start()] + index_html[mod_match.end():]
+index_html = index_html.replace(' crossorigin href="', ' href="')
+if "gamebar-bridge.js" not in index_html:
+    scripts = f"  {bridge_tag}\n"
+    if mod_src:
+        scripts += f'  <script src="{mod_src}"></script>\n'
+    index_html = index_html.replace("</body>", f"{scripts}</body>", 1)
+index_path.write_text(index_html, encoding="utf-8")
+PY
+}
+
+sync_now() {
+  rm -rf "$DEST"
+  mkdir -p "$DEST"
+  if web_repo="$(find_web_repo)"; then
+    cp -R "$web_repo/dist"/. "$DEST/"
+    transpile_for_edge18 "$web_repo"
+  else
+    write_fallback_assets
+  fi
+  cp "$BRIDGE" "$DEST/gamebar-bridge.js"
+  inject_bridge
+}
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  if [ ! -f "$DEST/overlay.html" ] || [ ! -f "$DEST/index.html" ] || [ ! -f "$DEST/gamebar-bridge.js" ] || ! cmp -s "$BRIDGE" "$DEST/gamebar-bridge.js"; then
+    sync_now
+  fi
+  cmp -s "$BRIDGE" "$DEST/gamebar-bridge.js" || { echo "WebAssets/gamebar-bridge.js out of sync." >&2; exit 1; }
+  grep -q 'gamebar-bridge.js' "$DEST/overlay.html" || { echo "WebAssets/overlay.html missing bridge script." >&2; exit 1; }
+  grep -q 'gamebar-bridge.js' "$DEST/index.html" || { echo "WebAssets/index.html missing bridge script." >&2; exit 1; }
+  if command -v node >/dev/null 2>&1; then
+    node --check "$BRIDGE"
+  fi
+  exit 0
+fi
+
+sync_now
+echo "Synced web assets to $DEST"
