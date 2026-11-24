@@ -68,6 +68,17 @@
       };
     }
   }
+  root.__ctcInjectAuthSession = function (key, sessionJson) {
+    try {
+      if (root.localStorage && key && sessionJson) {
+        var prev = root.localStorage.getItem(key);
+        root.localStorage.setItem(key, typeof sessionJson === 'string' ? sessionJson : JSON.stringify(sessionJson));
+        if (prev !== root.localStorage.getItem(key) && root.location && typeof root.location.reload === 'function') {
+          root.location.reload();
+        }
+      }
+    } catch (_) { /* ignore */ }
+  };
   if (typeof Element !== 'undefined' && !Element.prototype.replaceChildren) {
     Element.prototype.replaceChildren = function () {
       while (this.firstChild) this.removeChild(this.firstChild);

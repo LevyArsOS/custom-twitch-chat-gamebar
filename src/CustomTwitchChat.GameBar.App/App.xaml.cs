@@ -56,6 +56,38 @@ public sealed partial class App : Application
     public ConfigSyncStore ConfigStore { get; }
     public WidgetStateController StateController { get; }
     public BridgeProtocol Bridge { get; }
+    public event Action? AuthSessionUpdated;
+
+    public void SaveAuthSession(string key, string sessionJson)
+    {
+        try
+        {
+            var path = Path.Combine(ApplicationData.Current.LocalFolder.Path, "auth-session.json");
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new { key, sessionJson }));
+        }
+        catch
+        {
+            // Ignore sandbox write errors.
+        }
+        AuthSessionUpdated?.Invoke();
+    }
+
+    public (string Key, string SessionJson)? LoadAuthSession()
+    {
+        try
+        {
+            var path = Path.Combine(ApplicationData.Current.LocalFolder.Path, "auth-session.json");
+            if (!File.Exists(path)) return null;
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            var k = doc.RootElement.GetProperty("key").GetString();
+            var s = doc.RootElement.GetProperty("sessionJson").GetString();
+            return !string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(s) ? (k, s) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
     public static void Trace(string message)
     {

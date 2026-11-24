@@ -55,6 +55,7 @@ public sealed class OverlayWidgetPage
             _widget.SettingsClicked += OnSettingsClicked;
             _hostApp.StateController.OpenSettingsRequested += OnOpenSettingsRequested;
             _hostApp.ConfigStore.ConfigChanged += OnConfigChanged;
+            _hostApp.AuthSessionUpdated += OnAuthSessionUpdated;
             PushHostSnapshot();
         }
 
@@ -82,6 +83,22 @@ public sealed class OverlayWidgetPage
         }
         _hostApp.StateController.OpenSettingsRequested -= OnOpenSettingsRequested;
         _hostApp.ConfigStore.ConfigChanged -= OnConfigChanged;
+        _hostApp.AuthSessionUpdated -= OnAuthSessionUpdated;
+    }
+
+    private void OnAuthSessionUpdated() =>
+        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, InjectSavedAuthSession);
+
+    private void InjectSavedAuthSession()
+    {
+        var saved = _hostApp.LoadAuthSession();
+        if (saved is null) return;
+        var k = System.Text.Json.JsonSerializer.Serialize(saved.Value.Key);
+        var s = System.Text.Json.JsonSerializer.Serialize(saved.Value.SessionJson);
+        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+        {
+            await _webView.InvokeScriptAsync("eval", [$"window.__ctcInjectAuthSession && window.__ctcInjectAuthSession({k}, {s});"]);
+        });
     }
 
     private void OnWidgetStateChanged(XboxGameBarWidget sender, object args) => PushHostSnapshot();
@@ -134,6 +151,7 @@ public sealed class OverlayWidgetPage
     {
         App.Trace($"OverlayWebView NavigationCompleted IsSuccess={args.IsSuccess} WebErrorStatus={args.WebErrorStatus}");
         if (!args.IsSuccess) return;
+        InjectSavedAuthSession();
         var envelope = _hostApp.Bridge.CreateStateEnvelope(
             _hostApp.StateController.CurrentState,
             _hostApp.ConfigStore.GetSnapshot());

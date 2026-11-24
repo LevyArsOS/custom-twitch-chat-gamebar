@@ -79,13 +79,17 @@ public sealed partial class SettingsWidgetPage
         clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_clientIdBox, 0);
-        var pasteClientBtn = CreateButton("Paste", (_, _) => PasteClientIdFromClipboard());
+        var loginBtn = CreateButton("Login Twitch", (_, _) => StartTwitchDeviceLoginAsync(), primary: true);
+        var devBtn = CreateButton("Dev Console", (_, _) => OpenTwitchDevConsoleAsync());
         var reloginBtn = CreateButton("Relogin", (_, _) => ForceRelogin());
-        Grid.SetColumn(pasteClientBtn, 1);
-        Grid.SetColumn(reloginBtn, 2);
+        Grid.SetColumn(loginBtn, 1);
+        Grid.SetColumn(devBtn, 2);
+        Grid.SetColumn(reloginBtn, 3);
         clientRow.Children.Add(_clientIdBox);
-        clientRow.Children.Add(pasteClientBtn);
+        clientRow.Children.Add(loginBtn);
+        clientRow.Children.Add(devBtn);
         clientRow.Children.Add(reloginBtn);
         formStack.Children.Add(clientRow);
 
@@ -94,13 +98,17 @@ public sealed partial class SettingsWidgetPage
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_importBox, 0);
-        var importBtn = CreateButton("Paste & Import", (_, _) => PasteAndImportConfig());
+        var importBtn = CreateButton("Import", (_, _) => PasteAndImportConfig());
+        var fileBtn = CreateButton("Load File", (_, _) => LoadConfigOrClientFileAsync());
         var copyHashBtn = CreateButton("Copy Hash", (_, _) => CopyCurrentHash());
         Grid.SetColumn(importBtn, 1);
-        Grid.SetColumn(copyHashBtn, 2);
+        Grid.SetColumn(fileBtn, 2);
+        Grid.SetColumn(copyHashBtn, 3);
         importRow.Children.Add(_importBox);
         importRow.Children.Add(importBtn);
+        importRow.Children.Add(fileBtn);
         importRow.Children.Add(copyHashBtn);
         formStack.Children.Add(importRow);
 
