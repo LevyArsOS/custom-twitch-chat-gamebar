@@ -9,7 +9,7 @@
   <Identity
     Name="CustomTwitchChat.GameBarWidget"
     Publisher="CN=CustomTwitchChat"
-    Version="0.1.0.0" />
+    Version="0.1.1.0" />
 
   <mp:PhoneIdentity
     PhoneProductId="4b5f9e62-2f08-4f63-9c12-1b8a9d22c340"
