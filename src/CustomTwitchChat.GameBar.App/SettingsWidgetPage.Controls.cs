@@ -171,38 +171,4 @@ public sealed partial class SettingsWidgetPage
         grid.Children.Add(_webView);
         return grid;
     }
-
-    private Grid BuildMouseKeypad()
-    {
-        var panel = new Grid
-        {
-            Visibility = Visibility.Visible,
-            Background = new SolidColorBrush(Color.FromArgb(255, 24, 24, 34)),
-            Padding = new Thickness(6),
-        };
-        var rows = new[] { "1234567890_", "qwertyuiop", "asdfghjkl", "zxcvbnm" };
-        var stack = new StackPanel { Spacing = 4 };
-        foreach (var r in rows)
-        {
-            var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3 };
-            foreach (var ch in r)
-            {
-                var s = ch.ToString();
-                line.Children.Add(CreateKeyButton(s, () => _channelBox.Text += s));
-            }
-            if (r == "zxcvbnm")
-            {
-                line.Children.Add(CreateKeyButton("<-", () =>
-                {
-                    if (_channelBox.Text.Length > 0)
-                        _channelBox.Text = _channelBox.Text[..^1];
-                }));
-                line.Children.Add(CreateKeyButton("Clear", () => _channelBox.Text = string.Empty));
-                line.Children.Add(CreateKeyButton("Apply", ApplyToOverlay, primary: true));
-            }
-            stack.Children.Add(line);
-        }
-        panel.Children.Add(stack);
-        return panel;
-    }
 }

@@ -25,7 +25,7 @@ public sealed class BridgeIntegrationTests
             var applyMessage = JsonSerializer.Serialize(new
             {
                 type = "config:apply",
-                config = new { channel = "  #@LevyArsOS ", fontSize = 30, lang = "en" },
+                config = new { channel = "  #@ExampleChannel ", fontSize = 30, lang = "en" },
             });
 
             var result = protocol.HandleIncomingMessage(applyMessage);
@@ -34,7 +34,7 @@ public sealed class BridgeIntegrationTests
             Assert.Null(result.ErrorCode);
             Assert.NotNull(result.BroadcastJson);
             Assert.NotNull(receivedSnapshot);
-            Assert.Equal("levyarsos", receivedSnapshot!.Config["channel"]);
+            Assert.Equal("examplechannel", receivedSnapshot!.Config["channel"]);
             Assert.Equal(30d, receivedSnapshot.Config["fontSize"]);
 
             using var doc = JsonDocument.Parse(result.BroadcastJson!);
@@ -45,7 +45,7 @@ public sealed class BridgeIntegrationTests
 
             // Reloading from disk restores the exact persisted settings
             var reloadedStore = new ConfigSyncStore(new FileConfigStorage(tempFile));
-            Assert.Equal("levyarsos", reloadedStore.GetSnapshot().Config["channel"]);
+            Assert.Equal("examplechannel", reloadedStore.GetSnapshot().Config["channel"]);
             Assert.Equal(hash, reloadedStore.GetSnapshot().Hash);
         }
         finally

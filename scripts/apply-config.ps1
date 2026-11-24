@@ -8,7 +8,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$LocalStateDir = Join-Path $env:LOCALAPPDATA "Packages\CustomTwitchChat.GameBarWidget_25exawjjsmvva\LocalState"
+$Pkg = Get-AppxPackage -Name "CustomTwitchChat.GameBarWidget" | Select-Object -First 1
+if (-not $Pkg) {
+    throw "CustomTwitchChat.GameBarWidget package is not installed. Run scripts/install-dev-msix.ps1 first."
+}
+$LocalStateDir = Join-Path $env:LOCALAPPDATA "Packages\$($Pkg.PackageFamilyName)\LocalState"
 $ConfigPath = Join-Path $LocalStateDir "config.json"
 
 New-Item -ItemType Directory -Force -Path $LocalStateDir | Out-Null

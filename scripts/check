@@ -10,13 +10,6 @@ fi
 
 command -v dotnet >/dev/null 2>&1 || { echo "dotnet SDK not found (see global.json)" >&2; exit 1; }
 
-for candidate in "$ROOT/../ai-workspace/lib/content_scan.py" "$ROOT/../../../lib/content_scan.py"; do
-  if [ -f "$candidate" ]; then
-    python3 "$candidate" tree HEAD
-    break
-  fi
-done
-
 if [ -x "$ROOT/scripts/sync-web-assets" ]; then
   "$ROOT/scripts/sync-web-assets" --check
 fi

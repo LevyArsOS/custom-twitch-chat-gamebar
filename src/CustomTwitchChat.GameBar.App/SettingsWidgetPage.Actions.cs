@@ -71,26 +71,6 @@ public sealed partial class SettingsWidgetPage
         });
     }
 
-    private async void PasteChannelFromClipboard()
-    {
-        var txt = await ReadClipboardTextAsync();
-        if (txt is null) return;
-        if (txt.StartsWith("#c=1.", StringComparison.Ordinal) ||
-            txt.StartsWith("{", StringComparison.Ordinal) ||
-            txt.Contains("overlay.html", StringComparison.OrdinalIgnoreCase))
-        {
-            ImportRawText(txt);
-        }
-        else
-        {
-            RunOnUi(() =>
-            {
-                _channelBox.Text = txt;
-                ApplyToOverlay();
-            });
-        }
-    }
-
     private async void OpenFullConfiguratorAsync()
     {
         await Launcher.LaunchUriAsync(new Uri("ctc-gamebar://configure"));

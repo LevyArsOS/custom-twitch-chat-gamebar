@@ -95,7 +95,7 @@ public sealed class ConfigCodecTests
     public void ImportConfigFromInput_HandlesHashesUrlsHtmlAndStreamElementsJson()
     {
         var custom = ConfigCodec.GetDefaultConfig();
-        custom["channel"] = "levy";
+        custom["channel"] = "sample_channel";
         custom["fontSize"] = 36d;
         var hash = ConfigCodec.EncodeConfigHash(custom);
 
@@ -103,6 +103,8 @@ public sealed class ConfigCodecTests
         Assert.Equal(custom, ConfigCodec.ImportConfigFromInput($"c={hash[3..]}"));
         Assert.Equal(custom, ConfigCodec.ImportConfigFromInput(hash[3..]));
         Assert.Equal(custom, ConfigCodec.ImportConfigFromInput($"https://example.github.io/custom-twitch-chat/overlay.html{hash}"));
+        Assert.Equal(custom, ConfigCodec.ImportConfigFromInput($"https://example.github.io/custom-twitch-chat/{hash}"));
+        Assert.Equal(custom, ConfigCodec.ImportConfigFromInput($"ctc-gamebar://apply?c={hash[3..]}"));
 
         const string html = "<script>window.__CTC_CONFIG__ = {\"channel\":\"HTMLChan\",\"fontSize\":28};</script>";
         var fromHtml = ConfigCodec.ImportConfigFromInput(html);

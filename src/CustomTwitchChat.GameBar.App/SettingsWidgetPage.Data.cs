@@ -99,16 +99,6 @@ public sealed partial class SettingsWidgetPage
         ApplyToOverlay();
     }
 
-    private void CopyCurrentHash()
-    {
-        ReadControlsIntoWorkingConfig();
-        var hash = ConfigCodec.EncodeConfigHash(_workingConfig);
-        var pkg = new DataPackage();
-        pkg.SetText(hash);
-        Clipboard.SetContent(pkg);
-        _statusText.Text = $"Copied Config Hash to clipboard: {hash}";
-    }
-
     private static void SetComboValue(ComboBox combo, string value)
     {
         if (string.IsNullOrEmpty(value)) return;
@@ -162,20 +152,6 @@ public sealed partial class SettingsWidgetPage
             Foreground = new SolidColorBrush(Colors.White),
         };
         btn.Click += onClick;
-        return btn;
-    }
-
-    private static Button CreateKeyButton(string label, Action onClick, bool primary = false)
-    {
-        var btn = new Button
-        {
-            Content = label,
-            MinWidth = 30,
-            Padding = new Thickness(6, 4, 6, 4),
-            Background = new SolidColorBrush(primary ? Color.FromArgb(255, 145, 71, 255) : Color.FromArgb(255, 48, 48, 66)),
-            Foreground = new SolidColorBrush(Colors.White),
-        };
-        btn.Click += (_, _) => onClick();
         return btn;
     }
 

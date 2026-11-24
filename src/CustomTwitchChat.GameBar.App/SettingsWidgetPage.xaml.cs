@@ -20,7 +20,6 @@ public sealed partial class SettingsWidgetPage
     private readonly WebView _webView;
     private readonly TextBox _channelBox;
     private readonly TextBlock _statusText;
-    private readonly Grid _keypadPanel;
     private Dictionary<string, object> _workingConfig;
     private bool _hydrating;
 
@@ -38,7 +37,7 @@ public sealed partial class SettingsWidgetPage
         _webView.NavigationCompleted += SettingsWebView_NavigationCompleted;
         _webView.ScriptNotify += SettingsWebView_ScriptNotify;
 
-        _channelBox = CreateTextBox("e.g. peneku_sliby");
+        _channelBox = CreateTextBox("e.g. example_channel");
         _channelBox.TextChanged += (_, _) => OnFieldEdited();
         _channelBox.KeyDown += OnNativeInputKeyDown;
         _fontNameBox = CreateBoundTextBox("Montserrat");
@@ -71,7 +70,6 @@ public sealed partial class SettingsWidgetPage
             Margin = new Thickness(0, 6, 0, 0),
             TextWrapping = TextWrapping.Wrap,
         };
-        _keypadPanel = BuildMouseKeypad();
 
         HydrateControlsFromConfig();
         View = new Page
