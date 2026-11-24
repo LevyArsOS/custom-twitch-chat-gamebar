@@ -68,6 +68,27 @@ public sealed partial class SettingsWidgetPage
         eventsGrid.Children.Add(_streaksCheck);
         formStack.Children.Add(eventsGrid);
 
+        formStack.Children.Add(CreateSectionHeader("Twitch Login (OAuth Device Flow)"));
+        var authChecks = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        authChecks.Children.Add(_authEnabledCheck);
+        authChecks.Children.Add(_authPointsCheck);
+        authChecks.Children.Add(_authFollowsCheck);
+        formStack.Children.Add(authChecks);
+
+        var clientRow = new Grid();
+        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        clientRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(_clientIdBox, 0);
+        var pasteClientBtn = CreateButton("Paste", (_, _) => PasteClientIdFromClipboard());
+        var reloginBtn = CreateButton("Relogin", (_, _) => ForceRelogin());
+        Grid.SetColumn(pasteClientBtn, 1);
+        Grid.SetColumn(reloginBtn, 2);
+        clientRow.Children.Add(_clientIdBox);
+        clientRow.Children.Add(pasteClientBtn);
+        clientRow.Children.Add(reloginBtn);
+        formStack.Children.Add(clientRow);
+
         formStack.Children.Add(CreateSectionHeader("Import Config Hash (#c=1...) or StreamElements JSON"));
         var importRow = new Grid();
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

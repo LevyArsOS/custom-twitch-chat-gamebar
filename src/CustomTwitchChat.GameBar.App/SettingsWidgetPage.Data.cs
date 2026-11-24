@@ -30,6 +30,10 @@ public sealed partial class SettingsWidgetPage
         _cheersCheck.IsChecked = GetStr("showCheers", "yes") == "yes";
         _raidsCheck.IsChecked = GetStr("showRaids", "yes") == "yes";
         _streaksCheck.IsChecked = GetStr("showStreaks", "yes") == "yes";
+        _authEnabledCheck.IsChecked = GetStr("authEnabled", "no") == "yes";
+        _authPointsCheck.IsChecked = GetStr("authPoints", "no") == "yes";
+        _authFollowsCheck.IsChecked = GetStr("authFollows", "no") == "yes";
+        _clientIdBox.Text = GetStr("clientId");
         _hydrating = false;
     }
 
@@ -52,6 +56,10 @@ public sealed partial class SettingsWidgetPage
         _workingConfig["showCheers"] = _cheersCheck.IsChecked == true ? "yes" : "no";
         _workingConfig["showRaids"] = _raidsCheck.IsChecked == true ? "yes" : "no";
         _workingConfig["showStreaks"] = _streaksCheck.IsChecked == true ? "yes" : "no";
+        _workingConfig["authEnabled"] = _authEnabledCheck.IsChecked == true ? "yes" : "no";
+        _workingConfig["authPoints"] = _authPointsCheck.IsChecked == true ? "yes" : "no";
+        _workingConfig["authFollows"] = _authFollowsCheck.IsChecked == true ? "yes" : "no";
+        _workingConfig["clientId"] = (_clientIdBox.Text ?? string.Empty).Trim();
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs e)
@@ -129,9 +137,9 @@ public sealed partial class SettingsWidgetPage
         return cb;
     }
 
-    private CheckBox CreateCheck(string label)
+    private CheckBox CreateCheck(string label, bool defaultChecked = true)
     {
-        var chk = new CheckBox { Content = label, Foreground = new SolidColorBrush(Colors.White), IsChecked = true };
+        var chk = new CheckBox { Content = label, Foreground = new SolidColorBrush(Colors.White), IsChecked = defaultChecked };
         chk.Checked += (_, _) => OnFieldEdited();
         chk.Unchecked += (_, _) => OnFieldEdited();
         return chk;

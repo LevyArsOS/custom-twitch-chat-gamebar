@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.UI.Xaml.Controls;
@@ -24,6 +25,10 @@ public sealed partial class SettingsWidgetPage
     private readonly CheckBox _cheersCheck;
     private readonly CheckBox _raidsCheck;
     private readonly CheckBox _streaksCheck;
+    private readonly CheckBox _authEnabledCheck;
+    private readonly CheckBox _authPointsCheck;
+    private readonly CheckBox _authFollowsCheck;
+    private readonly TextBox _clientIdBox;
 
     private void OnFieldEdited()
     {
@@ -43,30 +48,37 @@ public sealed partial class SettingsWidgetPage
         _statusText.Text = $"Applied to overlay (#{_workingConfig["channel"]}) — {snapshot.Hash}";
     }
 
+    private void ForceRelogin()
+    {
+        var currentNonce = _workingConfig.TryGetValue("authNonce", out var n) && n is double d ? d : 1d;
+        _workingConfig["authNonce"] = currentNonce + 1d;
+        _authEnabledCheck.IsChecked = true;
+        ApplyToOverlay();
+    }
+
+    private async void PasteClientIdFromClipboard()
+    {
+        var txt = await ReadClipboardTextAsync();
+        if (txt is null) return;
+        _clientIdBox.Text = txt;
+        _authEnabledCheck.IsChecked = true;
+        ApplyToOverlay();
+    }
+
     private async void PasteChannelFromClipboard()
     {
-        try
+        var txt = await ReadClipboardTextAsync();
+        if (txt is null) return;
+        if (txt.StartsWith("#c=1.", StringComparison.Ordinal) ||
+            txt.StartsWith("{", StringComparison.Ordinal) ||
+            txt.Contains("overlay.html", StringComparison.OrdinalIgnoreCase))
         {
-            var view = Clipboard.GetContent();
-            if (view.Contains(StandardDataFormats.Text))
-            {
-                var txt = (await view.GetTextAsync() ?? string.Empty).Trim();
-                if (txt.StartsWith("#c=1.", StringComparison.Ordinal) ||
-                    txt.StartsWith("{", StringComparison.Ordinal) ||
-                    txt.Contains("overlay.html", StringComparison.OrdinalIgnoreCase))
-                {
-                    ImportRawText(txt);
-                }
-                else
-                {
-                    _channelBox.Text = txt;
-                    ApplyToOverlay();
-                }
-            }
+            ImportRawText(txt);
         }
-        catch (Exception ex)
+        else
         {
-            _statusText.Text = $"Clipboard error: {ex.Message}";
+            _channelBox.Text = txt;
+            ApplyToOverlay();
         }
     }
 
@@ -77,12 +89,8 @@ public sealed partial class SettingsWidgetPage
             var txt = (_importBox.Text ?? string.Empty).Trim();
             if (string.IsNullOrEmpty(txt))
             {
-                var view = Clipboard.GetContent();
-                if (view.Contains(StandardDataFormats.Text))
-                {
-                    txt = (await view.GetTextAsync() ?? string.Empty).Trim();
-                    _importBox.Text = txt;
-                }
+                txt = await ReadClipboardTextAsync() ?? string.Empty;
+                if (!string.IsNullOrEmpty(txt)) _importBox.Text = txt;
             }
             if (!string.IsNullOrEmpty(txt)) ImportRawText(txt);
         }
@@ -91,6 +99,67 @@ public sealed partial class SettingsWidgetPage
             _statusText.Text = $"Import failed: {ex.Message}";
         }
     }
+
+    private async Task<string?> ReadClipboardTextAsync()
+    {
+        try
+        {
+            var view = Clipboard.GetContent();
+            if (view.Contains(StandardDataFormats.Text))
+            {
+                return (await view.GetTextAsync() ?? string.Empty).Trim();
+            }
+        }
+        catch
+        {
+            // UWP Clipboard.GetContent() can throw UnauthorizedAccessException inside Game Bar overlay.
+        }
+
+        var nativeText = TryReadWin32ClipboardText();
+        if (nativeText is not null) return nativeText.Trim();
+
+        _statusText.Text = "Clipboard blocked by Game Bar focus; click the box and press Ctrl+V.";
+        return null;
+    }
+
+    private static string? TryReadWin32ClipboardText()
+    {
+        if (!OpenClipboard(IntPtr.Zero)) return null;
+        try
+        {
+            var handle = GetClipboardData(13); // CF_UNICODETEXT
+            if (handle == IntPtr.Zero) return null;
+            var ptr = GlobalLock(handle);
+            if (ptr == IntPtr.Zero) return null;
+            try
+            {
+                return Marshal.PtrToStringUni(ptr);
+            }
+            finally
+            {
+                GlobalUnlock(handle);
+            }
+        }
+        finally
+        {
+            CloseClipboard();
+        }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr GetClipboardData(uint uFormat);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GlobalLock(IntPtr hMem);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GlobalUnlock(IntPtr hMem);
 
     private void ImportRawText(string raw)
     {

@@ -59,6 +59,10 @@ public sealed partial class SettingsWidgetPage
         _cheersCheck = CreateCheck("Bits Cheers");
         _raidsCheck = CreateCheck("Raids");
         _streaksCheck = CreateCheck("Watch Streaks");
+        _authEnabledCheck = CreateCheck("Enable Twitch Login (OAuth)", defaultChecked: false);
+        _authPointsCheck = CreateCheck("Channel Points", defaultChecked: false);
+        _authFollowsCheck = CreateCheck("Follows", defaultChecked: false);
+        _clientIdBox = CreateBoundTextBox("Twitch Public Client ID");
         _statusText = new TextBlock
         {
             Foreground = new SolidColorBrush(Color.FromArgb(255, 167, 139, 250)),
