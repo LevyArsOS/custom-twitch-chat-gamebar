@@ -16,6 +16,7 @@ public sealed class OverlayWidgetPage
     private readonly App _hostApp;
     private readonly WebView _webView;
     private XboxGameBarWidget? _widget;
+    private int _revision;
 
     public OverlayWidgetPage(App hostApp)
     {
@@ -55,7 +56,13 @@ public sealed class OverlayWidgetPage
             PushHostSnapshot();
         }
 
-        var uri = _hostApp.ConfigStore.GetSnapshot().OverlayUri;
+        NavigateToSnapshot(_hostApp.ConfigStore.GetSnapshot());
+    }
+
+    private void NavigateToSnapshot(ConfigSnapshot snapshot)
+    {
+        var rev = Interlocked.Increment(ref _revision);
+        var uri = $"ms-appx-web:///WebAssets/overlay.html?rev={rev}{snapshot.Hash}";
         App.Trace($"OverlayWidgetPage navigating to {uri}");
         _webView.Navigate(new Uri(uri));
     }
@@ -92,8 +99,10 @@ public sealed class OverlayWidgetPage
         _ = DispatchEnvelopeAsync(envelope);
     }
 
-    private void OnConfigChanged(ConfigSnapshot snapshot) =>
-        _ = DispatchEnvelopeAsync(_hostApp.Bridge.CreateConfigEnvelope(snapshot));
+    private void OnConfigChanged(ConfigSnapshot snapshot)
+    {
+        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => NavigateToSnapshot(snapshot));
+    }
 
     private async void OnSettingsClicked(XboxGameBarWidget sender, object args) =>
         await sender.ActivateSettingsAsync();

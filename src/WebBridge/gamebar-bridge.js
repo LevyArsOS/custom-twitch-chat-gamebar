@@ -152,6 +152,50 @@
     }
   }
 
+  function setupNativeInputBridge(win, doc, sendApply) {
+    var activeInput = null;
+    function selectInput(el) {
+      if (!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+      var type = (el.getAttribute('type') || 'text').toLowerCase();
+      if (type === 'file' || type === 'color' || type === 'range' || type === 'checkbox') return;
+      if (activeInput && activeInput.style) activeInput.style.outline = '';
+      activeInput = el;
+      if (activeInput.style) activeInput.style.outline = '2px solid #9147ff';
+      var row = el.closest ? el.closest('[data-field]') : null;
+      var key = (row && row.getAttribute('data-field')) || el.id || 'channel';
+      var labelEl = row ? row.querySelector('label') : null;
+      var label = (labelEl && labelEl.textContent) || (el.id === 'ctc-import-text' ? 'Import JSON / URL' : key);
+      postToHost(win, { type: 'input:focus', key: key, label: label, value: el.value || '' });
+    }
+
+    doc.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (!t) return;
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') {
+        selectInput(t);
+      } else if (t.tagName === 'LABEL' && t.parentElement) {
+        var inp = t.parentElement.querySelector('input, textarea');
+        if (inp) selectInput(inp);
+      }
+    }, true);
+
+    win.__ctcSetActiveInputValue = function (val) {
+      var target = activeInput || doc.querySelector('[data-field="channel"] input');
+      if (!target) return;
+      target.value = String(val == null ? '' : val);
+      var evInput = doc.createEvent('Event');
+      evInput.initEvent('input', true, true);
+      target.dispatchEvent(evInput);
+      var evChange = doc.createEvent('Event');
+      evChange.initEvent('change', true, true);
+      target.dispatchEvent(evChange);
+    };
+
+    win.__ctcGameBarApplyNow = function () {
+      sendApply();
+    };
+  }
+
   function initGameBarBridge(opts) {
     var o = opts || {};
     var win = o.win || (typeof window !== 'undefined' ? window : null);
@@ -163,25 +207,19 @@
     var isOverlay = Boolean(doc.getElementById('chat-container'));
     var isSettings = Boolean(doc.getElementById('ctc-form-root'));
     var isPreview = Boolean(win.location && String(win.location.search).indexOf('preview=1') !== -1);
-    var lastRawConfig = storage ? storage.getItem(STORAGE_CONFIG_KEY) : null;
 
     function handleEnvelope(raw) {
       var msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'state:update') {
         applyVisualState(doc, msg.state);
-        if (isOverlay && !isPreview && msg.hash && (!win.location || !win.location.hash)) {
-          applyUpdatedHash(win, storage, msg.hash);
+        if (isOverlay && !isPreview && msg.config) {
+          updateStatusBanner(doc, msg.config);
         }
       } else if ((msg.type === 'config:updated' || msg.type === 'config:apply') && isOverlay && !isPreview) {
-        if (msg.config && storage) {
-          var serialized = JSON.stringify(msg.config);
-          if (serialized !== lastRawConfig) {
-            lastRawConfig = serialized;
-            try { storage.setItem(STORAGE_CONFIG_KEY, serialized); } catch (_) { /* ignore */ }
-            if (typeof win.location.reload === 'function') win.location.reload();
-            return;
-          }
+        if (msg.config) {
+          win.__CTC_CONFIG__ = msg.config;
+          updateStatusBanner(doc, msg.config);
         }
         if (msg.hash) applyUpdatedHash(win, storage, msg.hash);
       }
@@ -195,21 +233,10 @@
     if (isOverlay && !isPreview) {
       injectOverlayStyles(doc);
       var savedCfg = readSavedConfig(storage);
-      if (savedCfg) {
+      if (savedCfg && (!win.location || !win.location.hash || win.location.hash === '#c=1.e30')) {
         win.__CTC_CONFIG__ = savedCfg;
       }
-      var savedHash = storage && storage.getItem(STORAGE_HASH_KEY);
-      if (savedHash && win.location && !win.location.hash) {
-        win.location.hash = savedHash;
-      }
       updateStatusBanner(doc, savedCfg);
-      win.setInterval && win.setInterval(function () {
-        var currentRaw = storage ? storage.getItem(STORAGE_CONFIG_KEY) : null;
-        if (currentRaw && currentRaw !== lastRawConfig) {
-          lastRawConfig = currentRaw;
-          if (typeof win.location.reload === 'function') win.location.reload();
-        }
-      }, 600);
       postToHost(win, { type: 'state:query' });
     }
 
@@ -247,6 +274,7 @@
         var el = doc.getElementById(id);
         el && el.addEventListener('click', scheduleSync);
       });
+      setupNativeInputBridge(win, doc, sendApply);
     }
 
     return {
