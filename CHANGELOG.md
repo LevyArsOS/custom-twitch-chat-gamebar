@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com), versioning: [SemVer](https://semver.org).
 
+## [0.1.1](https://github.com/LevyArsOS/custom-twitch-chat-gamebar/compare/v0.1.0...v0.1.1) - 2026-11-24
+
+### Fixed
+- **packaging:** build real custom-twitch-chat bundle in CI and enforce --require-real [#6] (63a3ad0)
+
 ## [0.1.0] - 2026-11-24
 
 ### Added

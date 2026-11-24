@@ -18,7 +18,7 @@ Native Xbox Game Bar widget (`Microsoft.Gaming.XboxGameBar`) that embeds [`custo
 
 ## Install (End Users — No Developer Mode Required)
 
-1. Download `CustomTwitchChat.GameBar-v0.1.0-x64.zip` from [GitHub Releases](https://github.com/LevyArsOS/custom-twitch-chat-gamebar/releases).
+1. Download `CustomTwitchChat.GameBar-v0.1.1-x64.zip` from [GitHub Releases](https://github.com/LevyArsOS/custom-twitch-chat-gamebar/releases).
 2. Extract the ZIP archive and double-click **`Install.cmd`**:
    - Accept the one-time Administrator prompt so Windows trusts the signing certificate (`CustomTwitchChat.cer`).
    - Click **Install** in the native Windows App Installer window.
