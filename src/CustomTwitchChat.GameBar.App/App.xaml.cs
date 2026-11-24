@@ -50,6 +50,17 @@ public sealed partial class App : Application
         }
 
         ConfigStore = new ConfigSyncStore(storage);
+        ConfigStore.ConfigChanged += snap =>
+        {
+            try
+            {
+                _lastAppliedJson = System.Text.Json.JsonSerializer.Serialize(snap.Config);
+            }
+            catch
+            {
+                // Ignore serialization errors.
+            }
+        };
         StateController = new WidgetStateController();
         Bridge = new BridgeProtocol(ConfigStore, StateController);
         StartExternalConfigWatcher();

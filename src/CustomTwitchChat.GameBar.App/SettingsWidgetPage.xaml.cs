@@ -80,6 +80,7 @@ public sealed partial class SettingsWidgetPage
             Content = BuildLayout(),
         };
         _hostApp.ConfigStore.ConfigChanged += OnExternalStoreChanged;
+        View.Unloaded += (_, _) => _hostApp.ConfigStore.ConfigChanged -= OnExternalStoreChanged;
     }
 
     public Page View { get; }
@@ -88,12 +89,26 @@ public sealed partial class SettingsWidgetPage
 
     private void OnExternalStoreChanged(CustomTwitchChat.GameBar.Core.Bridge.ConfigSnapshot snap)
     {
-        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+        try
         {
-            _workingConfig = new Dictionary<string, object>(snap.Config, StringComparer.Ordinal);
-            HydrateControlsFromConfig();
-            PushConfigToPreview();
-        });
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                try
+                {
+                    _workingConfig = new Dictionary<string, object>(snap.Config, StringComparer.Ordinal);
+                    HydrateControlsFromConfig();
+                    PushConfigToPreview();
+                }
+                catch (Exception ex)
+                {
+                    App.Trace($"SettingsWidgetPage.OnExternalStoreChanged UI error: {ex.Message}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"SettingsWidgetPage.OnExternalStoreChanged dispatch error: {ex.Message}");
+        }
     }
 
     public void AttachWidget(XboxGameBarWidget? widget)
@@ -131,9 +146,26 @@ public sealed partial class SettingsWidgetPage
         }
     }
 
-    private Task DispatchScriptAsync(string script) =>
-        View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+    private Task DispatchScriptAsync(string script)
+    {
+        try
         {
-            await _webView.InvokeScriptAsync("eval", [script]);
-        }).AsTask();
+            return View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                try
+                {
+                    await _webView.InvokeScriptAsync("eval", [script]);
+                }
+                catch (Exception ex)
+                {
+                    App.Trace($"SettingsWidgetPage.DispatchScriptAsync eval error: {ex.Message}");
+                }
+            }).AsTask();
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"SettingsWidgetPage.DispatchScriptAsync dispatch error: {ex.Message}");
+            return Task.CompletedTask;
+        }
+    }
 }

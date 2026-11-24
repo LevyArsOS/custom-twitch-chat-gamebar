@@ -100,6 +100,7 @@ public sealed partial class SettingsWidgetPage
     {
         try
         {
+            App.Trace("LoadFileConfigAsync opening FileOpenPicker");
             var picker = new FileOpenPicker
             {
                 SuggestedStartLocation = PickerLocationId.Downloads,
@@ -110,12 +111,18 @@ public sealed partial class SettingsWidgetPage
             picker.FileTypeFilter.Add(".htm");
             picker.FileTypeFilter.Add(".txt");
             var file = await picker.PickSingleFileAsync();
-            if (file is null) return;
+            if (file is null)
+            {
+                App.Trace("LoadFileConfigAsync cancelled");
+                return;
+            }
+            App.Trace($"LoadFileConfigAsync picked {file.Name}");
             var content = await FileIO.ReadTextAsync(file);
             if (!string.IsNullOrWhiteSpace(content)) ImportRawText(content);
         }
         catch (Exception ex)
         {
+            App.Trace($"LoadFileConfigAsync ERROR: {ex}");
             _statusText.Text = $"File import failed: {ex.Message}";
         }
     }
@@ -201,11 +208,20 @@ public sealed partial class SettingsWidgetPage
 
     private void ImportRawText(string raw)
     {
-        var snapshot = _hostApp.ConfigStore.ApplyInput(raw);
-        _workingConfig = new Dictionary<string, object>(snapshot.Config, StringComparer.Ordinal);
-        HydrateControlsFromConfig();
-        PushConfigToPreview();
-        _statusText.Text = $"Imported and applied (#{_workingConfig["channel"]}) — {snapshot.Hash}";
+        try
+        {
+            App.Trace($"ImportRawText length={raw.Length}");
+            var snapshot = _hostApp.ConfigStore.ApplyInput(raw);
+            _workingConfig = new Dictionary<string, object>(snapshot.Config, StringComparer.Ordinal);
+            HydrateControlsFromConfig();
+            PushConfigToPreview();
+            _statusText.Text = $"Imported and applied (#{_workingConfig["channel"]}) — {snapshot.Hash}";
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"ImportRawText ERROR: {ex}");
+            _statusText.Text = $"Import error: {ex.Message}";
+        }
     }
 
     private void PushConfigToPreview()

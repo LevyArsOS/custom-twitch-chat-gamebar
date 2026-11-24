@@ -18,11 +18,11 @@ public sealed partial class SettingsWidgetPage
         _fontSizeBox.Text = GetNumStr("fontSize", 24);
         _limitBox.Text = GetNumStr("messagesLimit", 4);
         _hideAfterBox.Text = GetNumStr("hideAfter", 999);
-        _langCombo.SelectedItem = GetStr("lang", "pt-BR");
-        _layoutCombo.SelectedItem = GetStr("textInSameLine", "block");
-        _avatarCombo.SelectedItem = GetStr("showAvatar", "inline");
-        _nickColorCombo.SelectedItem = GetStr("nickColor", "user");
-        _animInCombo.SelectedItem = GetStr("animationIn", "none");
+        SetComboValue(_langCombo, GetStr("lang", "pt-BR"));
+        SetComboValue(_layoutCombo, GetStr("textInSameLine", "block"));
+        SetComboValue(_avatarCombo, GetStr("showAvatar", "inline"));
+        SetComboValue(_nickColorCombo, GetStr("nickColor", "user"));
+        SetComboValue(_animInCombo, GetStr("animationIn", "none"));
         _emote7tvCheck.IsChecked = GetStr("enable7tv", "yes") == "yes";
         _emoteBttvCheck.IsChecked = GetStr("enableBttv", "yes") == "yes";
         _emoteFfzCheck.IsChecked = GetStr("enableFfz", "yes") == "yes";
@@ -107,6 +107,13 @@ public sealed partial class SettingsWidgetPage
         pkg.SetText(hash);
         Clipboard.SetContent(pkg);
         _statusText.Text = $"Copied Config Hash to clipboard: {hash}";
+    }
+
+    private static void SetComboValue(ComboBox combo, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        if (!combo.Items.Contains(value)) combo.Items.Add(value);
+        combo.SelectedItem = value;
     }
 
     private string GetStr(string key, string fallback = "") =>

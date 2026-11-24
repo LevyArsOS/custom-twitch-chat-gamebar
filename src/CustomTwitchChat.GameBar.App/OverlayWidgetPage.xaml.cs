@@ -87,8 +87,17 @@ public sealed class OverlayWidgetPage
         _hostApp.AuthSessionUpdated -= OnAuthSessionUpdated;
     }
 
-    private void OnAuthSessionUpdated() =>
-        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, InjectSavedAuthSession);
+    private void OnAuthSessionUpdated()
+    {
+        try
+        {
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, InjectSavedAuthSession);
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"OverlayWidgetPage.OnAuthSessionUpdated error: {ex.Message}");
+        }
+    }
 
     private void InjectSavedAuthSession()
     {
@@ -96,10 +105,24 @@ public sealed class OverlayWidgetPage
         if (saved is null) return;
         var k = System.Text.Json.JsonSerializer.Serialize(saved.Value.Key);
         var s = System.Text.Json.JsonSerializer.Serialize(saved.Value.SessionJson);
-        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+        try
         {
-            await _webView.InvokeScriptAsync("eval", [$"window.__ctcInjectAuthSession && window.__ctcInjectAuthSession({k}, {s});"]);
-        });
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                try
+                {
+                    await _webView.InvokeScriptAsync("eval", [$"window.__ctcInjectAuthSession && window.__ctcInjectAuthSession({k}, {s});"]);
+                }
+                catch (Exception ex)
+                {
+                    App.Trace($"OverlayWidgetPage.InjectSavedAuthSession eval error: {ex.Message}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"OverlayWidgetPage.InjectSavedAuthSession dispatch error: {ex.Message}");
+        }
     }
 
     private void OnWidgetStateChanged(XboxGameBarWidget sender, object args) => PushHostSnapshot();
@@ -136,7 +159,14 @@ public sealed class OverlayWidgetPage
 
     private void OnConfigChanged(ConfigSnapshot snapshot)
     {
-        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => NavigateToSnapshot(snapshot));
+        try
+        {
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => NavigateToSnapshot(snapshot));
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"OverlayWidgetPage.OnConfigChanged error: {ex.Message}");
+        }
     }
 
     private async void OnSettingsClicked(XboxGameBarWidget sender, object args) =>
@@ -169,11 +199,28 @@ public sealed class OverlayWidgetPage
         }
     }
 
-    private Task DispatchEnvelopeAsync(string envelopeJson) =>
-        View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+    private Task DispatchEnvelopeAsync(string envelopeJson)
+    {
+        try
         {
-            await _webView.InvokeScriptAsync(
-                "eval",
-                [$"window.__ctcGameBarReceive && window.__ctcGameBarReceive({envelopeJson});"]);
-        }).AsTask();
+            return View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                try
+                {
+                    await _webView.InvokeScriptAsync(
+                        "eval",
+                        [$"window.__ctcGameBarReceive && window.__ctcGameBarReceive({envelopeJson});"]);
+                }
+                catch (Exception ex)
+                {
+                    App.Trace($"OverlayWidgetPage.DispatchEnvelopeAsync eval error: {ex.Message}");
+                }
+            }).AsTask();
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"OverlayWidgetPage.DispatchEnvelopeAsync dispatch error: {ex.Message}");
+            return Task.CompletedTask;
+        }
+    }
 }

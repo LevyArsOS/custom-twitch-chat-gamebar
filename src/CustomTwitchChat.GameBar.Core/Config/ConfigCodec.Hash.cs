@@ -46,6 +46,9 @@ public static partial class ConfigCodec
         var hashMatch = InputHashPattern.Match(text);
         if (hashMatch.Success && (
             text.Contains("overlay.html", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("#c=1.", StringComparison.Ordinal) ||
+            text.Contains("?c=1.", StringComparison.Ordinal) ||
+            text.Contains("&c=1.", StringComparison.Ordinal) ||
             text.StartsWith('#') ||
             text.StartsWith("c=", StringComparison.Ordinal) ||
             text.StartsWith("1.", StringComparison.Ordinal)))
