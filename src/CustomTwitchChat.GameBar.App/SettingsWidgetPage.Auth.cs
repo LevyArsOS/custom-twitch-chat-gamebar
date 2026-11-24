@@ -1,7 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using Windows.Storage;
-using Windows.Storage.Pickers;
 using Windows.System;
 
 namespace CustomTwitchChat.GameBar.App;
@@ -14,41 +12,7 @@ public sealed partial class SettingsWidgetPage
     private async void OpenTwitchDevConsoleAsync()
     {
         await Launcher.LaunchUriAsync(new Uri("https://dev.twitch.tv/console/apps"));
-        _statusText.Text = "Opened dev.twitch.tv/console/apps — create a Public app, copy Client ID, and right-click -> Paste in the box.";
-    }
-
-    private async void LoadConfigOrClientFileAsync()
-    {
-        try
-        {
-            var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
-            picker.FileTypeFilter.Add(".json");
-            picker.FileTypeFilter.Add(".html");
-            picker.FileTypeFilter.Add(".htm");
-            picker.FileTypeFilter.Add(".txt");
-            var file = await picker.PickSingleFileAsync();
-            if (file is null) return;
-
-            var text = (await FileIO.ReadTextAsync(file) ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(text)) return;
-
-            if (!text.StartsWith("{", StringComparison.Ordinal) &&
-                !text.StartsWith("<", StringComparison.Ordinal) &&
-                !text.StartsWith("#c=1.", StringComparison.Ordinal) &&
-                !text.Contains("overlay.html", StringComparison.OrdinalIgnoreCase))
-            {
-                _clientIdBox.Text = text;
-                _authEnabledCheck.IsChecked = true;
-                ApplyToOverlay();
-                return;
-            }
-
-            ImportRawText(text);
-        }
-        catch (Exception ex)
-        {
-            _statusText.Text = $"File load failed: {ex.Message}";
-        }
+        _statusText.Text = "Opened dev.twitch.tv/console/apps. Or set clientId via scripts\\apply-config.ps1.";
     }
 
     private async void StartTwitchDeviceLoginAsync()
@@ -57,7 +21,7 @@ public sealed partial class SettingsWidgetPage
         var clientId = (_clientIdBox.Text ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(clientId))
         {
-            _statusText.Text = "Enter or paste your Twitch Public Client ID first (click 'Dev Console' to create one).";
+            _statusText.Text = "Enter Twitch Public Client ID (or run scripts\\apply-config.ps1 -ClientId ...).";
             return;
         }
 
@@ -100,7 +64,7 @@ public sealed partial class SettingsWidgetPage
                 : "https://www.twitch.tv/activate";
             var intervalSec = devDoc.RootElement.TryGetProperty("interval", out var iv) ? Math.Max(3, iv.GetInt32()) : 5;
 
-            _statusText.Text = $"Twitch Code: {userCode} — Opening browser to authorize...";
+            _statusText.Text = $"Twitch Code: {userCode} — Authorize in browser (polling continues automatically).";
             await Launcher.LaunchUriAsync(new Uri(verifyUri));
 
             await PollDeviceTokenAsync(clientId, deviceCode, scopes, intervalSec, ct);

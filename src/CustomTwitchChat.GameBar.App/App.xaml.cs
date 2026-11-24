@@ -51,6 +51,47 @@ public sealed partial class App : Application
         ConfigStore = new ConfigSyncStore(storage);
         StateController = new WidgetStateController();
         Bridge = new BridgeProtocol(ConfigStore, StateController);
+        StartExternalConfigWatcher();
+    }
+
+    private FileSystemWatcher? _configWatcher;
+    private string _lastAppliedJson = string.Empty;
+
+    private void StartExternalConfigWatcher()
+    {
+        try
+        {
+            var dir = ApplicationData.Current.LocalFolder.Path;
+            _configWatcher = new FileSystemWatcher(dir, "config.json")
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.Size,
+                EnableRaisingEvents = true,
+            };
+            _configWatcher.Changed += OnExternalConfigFileChanged;
+            _configWatcher.Created += OnExternalConfigFileChanged;
+        }
+        catch
+        {
+            // Ignore watcher errors in restricted environments.
+        }
+    }
+
+    private void OnExternalConfigFileChanged(object sender, FileSystemEventArgs e)
+    {
+        try
+        {
+            Thread.Sleep(50);
+            if (!File.Exists(e.FullPath)) return;
+            var raw = File.ReadAllText(e.FullPath);
+            if (string.IsNullOrWhiteSpace(raw) || raw == _lastAppliedJson) return;
+            _lastAppliedJson = raw;
+            ConfigStore.ApplyInput(raw);
+            Trace("Reloaded config.json from external update.");
+        }
+        catch
+        {
+            // Ignore transient file lock while writer finishes.
+        }
     }
 
     public ConfigSyncStore ConfigStore { get; }

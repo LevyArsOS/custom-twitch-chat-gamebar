@@ -21,28 +21,14 @@ public sealed partial class SettingsWidgetPage
         var chanRow = new Grid();
         chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        chanRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_channelBox, 0);
-        var pasteBtn = CreateButton("Paste", (_, _) => PasteChannelFromClipboard());
-        var keysBtn = CreateButton("Keys", (_, _) =>
-        {
-            _keypadPanel.Visibility = _keypadPanel.Visibility == Visibility.Visible
-                ? Visibility.Collapsed
-                : Visibility.Visible;
-        });
         var applyBtn = CreateButton("Apply to Overlay", (_, _) => ApplyToOverlay(), primary: true);
-        Grid.SetColumn(pasteBtn, 1);
-        Grid.SetColumn(keysBtn, 2);
-        Grid.SetColumn(applyBtn, 3);
+        Grid.SetColumn(applyBtn, 1);
         chanRow.Children.Add(_channelBox);
-        chanRow.Children.Add(pasteBtn);
-        chanRow.Children.Add(keysBtn);
         chanRow.Children.Add(applyBtn);
 
         formStack.Children.Add(CreateSectionHeader("Twitch Channel"));
         formStack.Children.Add(chanRow);
-        formStack.Children.Add(_keypadPanel);
         formStack.Children.Add(_statusText);
 
         formStack.Children.Add(CreateSectionHeader("Preset & Language"));
@@ -93,23 +79,15 @@ public sealed partial class SettingsWidgetPage
         clientRow.Children.Add(reloginBtn);
         formStack.Children.Add(clientRow);
 
-        formStack.Children.Add(CreateSectionHeader("Import Config Hash (#c=1...) or StreamElements JSON"));
+        formStack.Children.Add(CreateSectionHeader("Import via PowerShell: .\\scripts\\apply-config.ps1 \"#c=1...\""));
         var importRow = new Grid();
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        importRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Grid.SetColumn(_importBox, 0);
-        var importBtn = CreateButton("Import", (_, _) => PasteAndImportConfig());
-        var fileBtn = CreateButton("Load File", (_, _) => LoadConfigOrClientFileAsync());
-        var copyHashBtn = CreateButton("Copy Hash", (_, _) => CopyCurrentHash());
+        var importBtn = CreateButton("Apply Input", (_, _) => PasteAndImportConfig());
         Grid.SetColumn(importBtn, 1);
-        Grid.SetColumn(fileBtn, 2);
-        Grid.SetColumn(copyHashBtn, 3);
         importRow.Children.Add(_importBox);
         importRow.Children.Add(importBtn);
-        importRow.Children.Add(fileBtn);
-        importRow.Children.Add(copyHashBtn);
         formStack.Children.Add(importRow);
 
         var scroll = new ScrollViewer
