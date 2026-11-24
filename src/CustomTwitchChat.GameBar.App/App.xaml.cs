@@ -31,6 +31,7 @@ public sealed partial class App : Application
     private XboxGameBarWidget? _settingsWidget;
     private OverlayWidgetPage? _overlayController;
     private SettingsWidgetPage? _settingsController;
+    private SettingsWidgetPage? _desktopController;
 
     public App()
     {
@@ -143,11 +144,24 @@ public sealed partial class App : Application
         }
     }
 
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        Trace($"OnLaunched Arguments={args.Arguments}");
+        OpenDesktopConfigurator(null);
+    }
+
     protected override void OnActivated(IActivatedEventArgs args)
     {
         try
         {
             Trace($"OnActivated Kind={args.Kind}");
+            if (args is IProtocolActivatedEventArgs proto &&
+                string.Equals(proto.Uri?.Scheme, "ctc-gamebar", StringComparison.OrdinalIgnoreCase))
+            {
+                HandleCustomProtocol(proto.Uri);
+                return;
+            }
+
             var widgetArgs = TryCastWidgetArgs(args);
             if (widgetArgs is null)
             {
@@ -168,7 +182,7 @@ public sealed partial class App : Application
             if (string.Equals(widgetArgs.AppExtensionId, AppManifestValidator.SettingsWidgetId, StringComparison.Ordinal))
             {
                 _settingsWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-                _settingsController = new SettingsWidgetPage(this);
+                _settingsController = new SettingsWidgetPage(this, isDesktopMode: false);
                 rootFrame.Content = _settingsController.View;
                 _settingsController.AttachWidget(_settingsWidget);
             }
@@ -188,6 +202,53 @@ public sealed partial class App : Application
             Trace($"OnActivated ERROR: {ex}");
             throw;
         }
+    }
+
+    private void HandleCustomProtocol(Uri uri)
+    {
+        Trace($"HandleCustomProtocol Uri={uri.AbsoluteUri}");
+        string? status = null;
+        var raw = uri.AbsoluteUri;
+        var idx = raw.IndexOf("c=1.", StringComparison.Ordinal);
+        if (idx >= 0)
+        {
+            var payload = "#" + raw[idx..];
+            var snap = ConfigStore.ApplyInput(payload);
+            status = $"Imported from link (#{snap.Config["channel"]}) — applied to Game Bar Overlay!";
+        }
+        OpenDesktopConfigurator(status);
+    }
+
+    private void OpenDesktopConfigurator(string? initialStatus)
+    {
+        if (Window.Current.Content is not Frame rootFrame)
+        {
+            rootFrame = new Frame();
+            Window.Current.Content = rootFrame;
+        }
+
+        if (_desktopController is null || rootFrame.Content != _desktopController.View)
+        {
+            _desktopController = new SettingsWidgetPage(this, isDesktopMode: true);
+            rootFrame.Content = _desktopController.View;
+            _desktopController.AttachWidget(null);
+        }
+
+        if (!string.IsNullOrEmpty(initialStatus))
+        {
+            _desktopController.SetStatus(initialStatus);
+        }
+
+        try
+        {
+            Windows.UI.ViewManagement.ApplicationView.GetForCurrentView().Title = "Custom Twitch Chat — Configurator";
+        }
+        catch
+        {
+            // Ignore if view title is unavailable.
+        }
+
+        Window.Current.Activate();
     }
 
     private static XboxGameBarWidgetActivatedEventArgs? TryCastWidgetArgs(IActivatedEventArgs args)

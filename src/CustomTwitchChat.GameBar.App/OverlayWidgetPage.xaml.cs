@@ -26,6 +26,7 @@ public sealed class OverlayWidgetPage
         {
             DefaultBackgroundColor = Colors.Transparent,
             AllowFocusOnInteraction = false,
+            IsHitTestVisible = false,
         };
         _webView.NavigationCompleted += OverlayWebView_NavigationCompleted;
         _webView.ScriptNotify += OverlayWebView_ScriptNotify;
@@ -118,7 +119,7 @@ public sealed class OverlayWidgetPage
         _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
         {
             var interactive = !state.IsTransparentClickThrough;
-            _webView.IsHitTestVisible = interactive;
+            _webView.IsHitTestVisible = false;
             _rootGrid.IsHitTestVisible = interactive;
             View.IsHitTestVisible = interactive;
             try
