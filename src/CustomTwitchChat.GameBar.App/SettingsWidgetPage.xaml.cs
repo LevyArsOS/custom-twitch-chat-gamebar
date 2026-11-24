@@ -85,7 +85,34 @@ public sealed partial class SettingsWidgetPage
 
     public Page View { get; }
 
-    public void SetStatus(string text) => _statusText.Text = text;
+    public void SetStatus(string text) => RunOnUi(() => _statusText.Text = text);
+
+    private void RunOnUi(Action action)
+    {
+        try
+        {
+            if (View.Dispatcher.HasThreadAccess)
+            {
+                action();
+                return;
+            }
+            _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    App.Trace($"RunOnUi action error: {ex.Message}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            App.Trace($"RunOnUi dispatch error: {ex.Message}");
+        }
+    }
 
     private void OnExternalStoreChanged(CustomTwitchChat.GameBar.Core.Bridge.ConfigSnapshot snap)
     {

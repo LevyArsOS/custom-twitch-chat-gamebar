@@ -63,9 +63,12 @@ public sealed partial class SettingsWidgetPage
     {
         var txt = await ReadClipboardTextAsync();
         if (txt is null) return;
-        _clientIdBox.Text = txt;
-        _authEnabledCheck.IsChecked = true;
-        ApplyToOverlay();
+        RunOnUi(() =>
+        {
+            _clientIdBox.Text = txt;
+            _authEnabledCheck.IsChecked = true;
+            ApplyToOverlay();
+        });
     }
 
     private async void PasteChannelFromClipboard()
@@ -80,8 +83,11 @@ public sealed partial class SettingsWidgetPage
         }
         else
         {
-            _channelBox.Text = txt;
-            ApplyToOverlay();
+            RunOnUi(() =>
+            {
+                _channelBox.Text = txt;
+                ApplyToOverlay();
+            });
         }
     }
 
@@ -93,7 +99,7 @@ public sealed partial class SettingsWidgetPage
     private async void OpenWebConfiguratorAsync()
     {
         await Launcher.LaunchUriAsync(new Uri("https://levyarsos.github.io/custom-twitch-chat/"));
-        _statusText.Text = "Opened web configurator. Copy the OBS URL (#c=1...) or export chat.data.json and import it here.";
+        SetStatus("Opened web configurator. Copy the OBS URL (#c=1...) or export chat.data.json and import it here.");
     }
 
     private async void LoadFileConfigAsync()
@@ -123,7 +129,7 @@ public sealed partial class SettingsWidgetPage
         catch (Exception ex)
         {
             App.Trace($"LoadFileConfigAsync ERROR: {ex}");
-            _statusText.Text = $"File import failed: {ex.Message}";
+            SetStatus($"File import failed: {ex.Message}");
         }
     }
 
@@ -135,13 +141,14 @@ public sealed partial class SettingsWidgetPage
             if (string.IsNullOrEmpty(txt))
             {
                 txt = await ReadClipboardTextAsync() ?? string.Empty;
-                if (!string.IsNullOrEmpty(txt)) _importBox.Text = txt;
+                if (!string.IsNullOrEmpty(txt)) RunOnUi(() => _importBox.Text = txt);
             }
             if (!string.IsNullOrEmpty(txt)) ImportRawText(txt);
         }
         catch (Exception ex)
         {
-            _statusText.Text = $"Import failed: {ex.Message}";
+            App.Trace($"PasteAndImportConfig ERROR: {ex}");
+            SetStatus($"Import failed: {ex.Message}");
         }
     }
 
@@ -163,7 +170,7 @@ public sealed partial class SettingsWidgetPage
         var nativeText = TryReadWin32ClipboardText();
         if (nativeText is not null) return nativeText.Trim();
 
-        _statusText.Text = "Clipboard blocked by Game Bar focus; click the box and press Ctrl+V.";
+        SetStatus("Clipboard empty or unavailable; click the box and press Ctrl+V.");
         return null;
     }
 
@@ -212,15 +219,18 @@ public sealed partial class SettingsWidgetPage
         {
             App.Trace($"ImportRawText length={raw.Length}");
             var snapshot = _hostApp.ConfigStore.ApplyInput(raw);
-            _workingConfig = new Dictionary<string, object>(snapshot.Config, StringComparer.Ordinal);
-            HydrateControlsFromConfig();
-            PushConfigToPreview();
-            _statusText.Text = $"Imported and applied (#{_workingConfig["channel"]}) — {snapshot.Hash}";
+            RunOnUi(() =>
+            {
+                _workingConfig = new Dictionary<string, object>(snapshot.Config, StringComparer.Ordinal);
+                HydrateControlsFromConfig();
+                PushConfigToPreview();
+                _statusText.Text = $"Imported and applied (#{_workingConfig["channel"]}) — {snapshot.Hash}";
+            });
         }
         catch (Exception ex)
         {
             App.Trace($"ImportRawText ERROR: {ex}");
-            _statusText.Text = $"Import error: {ex.Message}";
+            SetStatus($"Import error: {ex.Message}");
         }
     }
 

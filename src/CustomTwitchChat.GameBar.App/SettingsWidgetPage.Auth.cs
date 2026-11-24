@@ -12,7 +12,7 @@ public sealed partial class SettingsWidgetPage
     private async void OpenTwitchDevConsoleAsync()
     {
         await Launcher.LaunchUriAsync(new Uri("https://dev.twitch.tv/console/apps"));
-        _statusText.Text = "Opened dev.twitch.tv/console/apps. Create a Public client app, copy its Client ID and paste it here.";
+        SetStatus("Opened dev.twitch.tv/console/apps. Create a Public client app, copy its Client ID and paste it here.");
     }
 
     private async void StartTwitchDeviceLoginAsync()
@@ -21,7 +21,7 @@ public sealed partial class SettingsWidgetPage
         var clientId = (_clientIdBox.Text ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(clientId))
         {
-            _statusText.Text = "Paste your Twitch Public Client ID first (click Dev Console to create one).";
+            SetStatus("Paste your Twitch Public Client ID first (click Dev Console to create one).");
             return;
         }
 
@@ -52,7 +52,7 @@ public sealed partial class SettingsWidgetPage
             var devBody = await devRes.Content.ReadAsStringAsync(ct);
             if (!devRes.IsSuccessStatusCode)
             {
-                _statusText.Text = $"Twitch device auth failed ({(int)devRes.StatusCode}): check your Client ID.";
+                SetStatus($"Twitch device auth failed ({(int)devRes.StatusCode}): check your Client ID.");
                 return;
             }
 
@@ -64,18 +64,21 @@ public sealed partial class SettingsWidgetPage
                 : "https://www.twitch.tv/activate";
             var intervalSec = devDoc.RootElement.TryGetProperty("interval", out var iv) ? Math.Max(3, iv.GetInt32()) : 5;
 
-            try
+            RunOnUi(() =>
             {
-                var pkg = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                pkg.SetText(userCode);
-                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(pkg);
-            }
-            catch
-            {
-                // Clipboard optional.
-            }
+                try
+                {
+                    var pkg = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    pkg.SetText(userCode);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(pkg);
+                }
+                catch
+                {
+                    // Clipboard optional.
+                }
+            });
 
-            _statusText.Text = $"Twitch Code: {userCode} (copied to clipboard!) — Authorize in browser; waiting for confirmation...";
+            SetStatus($"Twitch Code: {userCode} (copied to clipboard!) — Authorize in browser; waiting for confirmation...");
             var launchUrl = verifyUri.Contains('?') ? verifyUri : $"{verifyUri}?public=true&device-code={Uri.EscapeDataString(userCode)}";
             await Launcher.LaunchUriAsync(new Uri(launchUrl));
 
@@ -87,7 +90,8 @@ public sealed partial class SettingsWidgetPage
         }
         catch (Exception ex)
         {
-            _statusText.Text = $"Twitch login error: {ex.Message}";
+            App.Trace($"StartTwitchDeviceLoginAsync ERROR: {ex}");
+            SetStatus($"Twitch login error: {ex.Message}");
         }
     }
 
@@ -138,7 +142,7 @@ public sealed partial class SettingsWidgetPage
                 });
 
                 _hostApp.SaveAuthSession($"ctc.auth.v1.{clientId}", sessionJson);
-                _statusText.Text = $"Twitch connected as @{login}!";
+                SetStatus($"Twitch connected as @{login}!");
                 return;
             }
 
@@ -146,7 +150,7 @@ public sealed partial class SettingsWidgetPage
             if (msg == "slow_down") intervalSec += 5;
             else if (msg is "expired_token" or "access_denied")
             {
-                _statusText.Text = $"Twitch login {msg}; click Login Twitch to retry.";
+                SetStatus($"Twitch login {msg}; click Login with Twitch to retry.");
                 return;
             }
         }
