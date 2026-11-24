@@ -16,7 +16,16 @@ Widget nativo para Xbox Game Bar (`Microsoft.Gaming.XboxGameBar`) que embute o [
 - **Configurador Embutido com Sincronização em Tempo Real**: Traz a **Overlay View** (`CustomTwitchChat.Overlay`) e a **Settings View** (`CustomTwitchChat.Settings`). Alterações no configurador ou o botão **Apply to Game Bar Overlay** atualizam o chat fixado instantaneamente via `BroadcastChannel` e bridge do host.
 - **Compatibilidade Total com `custom-twitch-chat`**: Aceita Config Hashes `#c=1.<base64url>`, `config.json`, `chat.html` exportado (`window.__CTC_CONFIG__`), `chat.data.json` do StreamElements e login OAuth Device Code para Channel Points e Follows.
 
-## Build e Instalação (Sideload) no Windows
+## Instalação (Usuário Final — Sem Modo Desenvolvedor)
+
+1. Baixe o arquivo `CustomTwitchChat.GameBar-v0.1.0-x64.zip` em [GitHub Releases](https://github.com/LevyArsOS/custom-twitch-chat-gamebar/releases).
+2. Extraia o ZIP e clique duas vezes em **`Install.cmd`**:
+   - Aceite a permissão de Administrador (1 única vez) para o Windows confiar no certificado de assinatura (`CustomTwitchChat.cer`).
+   - Clique em **Instalar** na janela nativa do Instalador de Aplicativos do Windows.
+3. Abra **Custom Twitch Chat** no Menu Iniciar para escolher seu canal, importar uma configuração do configurador web (`.json` / `.html` / link `#c=1...`) ou fazer login com a Twitch.
+4. Pressione `Win+G` em qualquer jogo, abra **Menu de Widgets** -> **Custom Twitch Chat Overlay**, clique em **Fixar (Pin)** e ative o ícone de **Click-through** para manter o chat transparente por cima do jogo.
+
+## Build e Instalação (Sideload) no Windows (Desenvolvedores)
 
 1. Sincronize os assets web do repositório irmão `custom-twitch-chat`:
    ```bash

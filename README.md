@@ -16,7 +16,16 @@ Native Xbox Game Bar widget (`Microsoft.Gaming.XboxGameBar`) that embeds [`custo
 - **Embedded Configurator & Live Sync**: Includes both the **Overlay View** (`CustomTwitchChat.Overlay`) and **Settings View** (`CustomTwitchChat.Settings`). Editing settings or clicking **Apply to Game Bar Overlay** updates the pinned chat in real time via `BroadcastChannel` and the host bridge.
 - **Full `custom-twitch-chat` Compatibility**: Supports `#c=1.<base64url>` Config Hashes, `config.json`, exported `chat.html` (`window.__CTC_CONFIG__`), legacy StreamElements `chat.data.json`, and in-widget Device Code OAuth for Channel Points and Follows.
 
-## Build & Sideload on Windows
+## Install (End Users — No Developer Mode Required)
+
+1. Download `CustomTwitchChat.GameBar-v0.1.0-x64.zip` from [GitHub Releases](https://github.com/LevyArsOS/custom-twitch-chat-gamebar/releases).
+2. Extract the ZIP archive and double-click **`Install.cmd`**:
+   - Accept the one-time Administrator prompt so Windows trusts the signing certificate (`CustomTwitchChat.cer`).
+   - Click **Install** in the native Windows App Installer window.
+3. Open **Custom Twitch Chat** from the Start Menu to set your channel, import a config from the web configurator (`.json` / `.html` / `#c=1...` URL), or sign in with Twitch OAuth.
+4. Press `Win+G` in any game, open **Widget Menu** -> **Custom Twitch Chat Overlay**, click the **Pin** icon and the **Click-through** icon to keep chat transparent above your game.
+
+## Build & Sideload on Windows (Developers)
 
 1. Sync web assets from a sibling `custom-twitch-chat` checkout (or generate standalone fallback assets):
    ```bash
