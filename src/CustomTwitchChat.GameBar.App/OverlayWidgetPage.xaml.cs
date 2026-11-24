@@ -15,6 +15,7 @@ public sealed class OverlayWidgetPage
 {
     private readonly App _hostApp;
     private readonly WebView _webView;
+    private readonly Grid _rootGrid;
     private XboxGameBarWidget? _widget;
     private int _revision;
 
@@ -29,12 +30,12 @@ public sealed class OverlayWidgetPage
         _webView.NavigationCompleted += OverlayWebView_NavigationCompleted;
         _webView.ScriptNotify += OverlayWebView_ScriptNotify;
 
-        var root = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
-        root.Children.Add(_webView);
+        _rootGrid = new Grid { Background = new SolidColorBrush(Colors.Transparent) };
+        _rootGrid.Children.Add(_webView);
         View = new Page
         {
             Background = new SolidColorBrush(Colors.Transparent),
-            Content = root,
+            Content = _rootGrid,
         };
         View.Unloaded += (_, _) => DetachWidget();
     }
@@ -97,6 +98,21 @@ public sealed class OverlayWidgetPage
             IsFavorited: _widget.Favorited));
 
         var envelope = _hostApp.Bridge.CreateStateEnvelope(state, _hostApp.ConfigStore.GetSnapshot());
+        _ = View.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+        {
+            var interactive = !state.IsTransparentClickThrough;
+            _webView.IsHitTestVisible = interactive;
+            _rootGrid.IsHitTestVisible = interactive;
+            View.IsHitTestVisible = interactive;
+            try
+            {
+                Windows.UI.Xaml.Window.Current.CoreWindow.IsInputEnabled = interactive;
+            }
+            catch
+            {
+                // Ignore if CoreWindow input state is managed exclusively by Game Bar host.
+            }
+        });
         _ = DispatchEnvelopeAsync(envelope);
     }
 

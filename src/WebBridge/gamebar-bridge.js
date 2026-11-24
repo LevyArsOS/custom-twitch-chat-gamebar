@@ -118,7 +118,7 @@
     var style = doc.createElement('style');
     style.id = 'ctc-gamebar-style';
     style.textContent = [
-      'html, body { background: transparent !important; }',
+      'html, body { background: transparent !important; -ms-user-select: none !important; user-select: none !important; }',
       'html.gb-pinned-clickthrough, html.gb-pinned-clickthrough body {',
       '  background: transparent !important;',
       '  pointer-events: none !important;',
@@ -126,6 +126,7 @@
       '}',
       'html.gb-pinned-clickthrough #ctc-auth-root,',
       'html.gb-pinned-clickthrough #ctc-gb-status { display: none !important; }',
+      '#chat-container, .message-row { -ms-user-select: none !important; user-select: none !important; }',
       '#chat-container { opacity: var(--gb-chat-opacity, 1); }',
       '#ctc-gb-status {',
       '  position: fixed; top: 8px; left: 8px; right: 8px; z-index: 9999;',
