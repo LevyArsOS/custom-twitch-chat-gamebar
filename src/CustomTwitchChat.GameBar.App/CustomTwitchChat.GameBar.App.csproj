@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <UseUwp>true</UseUwp>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <Platforms>x64;arm64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CsWinRTIncludes>Microsoft.Gaming.XboxGameBar</CsWinRTIncludes>
+    <CsWinRTWindowsMetadata>"$(SystemRoot)\System32\WinMetadata"</CsWinRTWindowsMetadata>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="7.3.2607010" />
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CsWinRTInputs Include="$(NuGetPackageRoot)microsoft.gaming.xboxgamebar\7.3.2607010\lib\uap10.0\Microsoft.Gaming.XboxGameBar.winmd" />
+    <None Include="$(NuGetPackageRoot)microsoft.gaming.xboxgamebar\7.3.2607010\private\Microsoft.Gaming.XboxGameBar.Private.winmd"
+          Link="Microsoft.Gaming.XboxGameBar.Private.winmd"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(NuGetPackageRoot)microsoft.gaming.xboxgamebar\7.3.2607010\runtimes\win10-$(Platform)\native\Microsoft.Gaming.XboxGameBar.dll"
+          Link="Microsoft.Gaming.XboxGameBar.dll"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(NuGetPackageRoot)microsoft.gaming.xboxgamebar\7.3.2607010\runtimes\win10-$(Platform)\native\Microsoft.Gaming.XboxGameBar.pri"
+          Link="Microsoft.Gaming.XboxGameBar.pri"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../CustomTwitchChat.GameBar.Core/CustomTwitchChat.GameBar.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="WebAssets/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
