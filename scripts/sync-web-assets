@@ -94,9 +94,14 @@ import pathlib, re, sys
 p = pathlib.Path(sys.argv[1])
 txt = p.read_text(encoding="utf-8")
 txt = re.sub(r"\|\|[A-Za-z0-9_$]+\.origin!==[A-Za-z0-9_$]+\.location\.origin", "", txt)
+txt = re.sub(
+    r'new RegExp\("\(\\\\p\{Extended_Pictographic\}\|\\\\p\{Emoji_Presentation\}\|\[\\\\u2600-\\\\u27BF\\\\u2B50\\\\u2B55\]\)",\s*"u"\)',
+    r'/([\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\u2B50\u2B55])/',
+    txt,
+)
 txt = txt.replace(
     r"/(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u2600-\u27BF\u2B50\u2B55])/u",
-    r"/(\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F\uDE80-\uDEFF]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF\u2B50\u2B55])/"
+    r"/([\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF\u2B50\u2B55])/"
 )
 p.write_text(txt, encoding="utf-8")
 PY
