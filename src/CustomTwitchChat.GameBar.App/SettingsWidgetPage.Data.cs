@@ -33,7 +33,10 @@ public sealed partial class SettingsWidgetPage
         _authEnabledCheck.IsChecked = GetStr("authEnabled", "no") == "yes";
         _authPointsCheck.IsChecked = GetStr("authPoints", "no") == "yes";
         _authFollowsCheck.IsChecked = GetStr("authFollows", "no") == "yes";
-        _clientIdBox.Text = GetStr("clientId");
+        var cfgClientId = GetStr("clientId");
+        _clientIdBox.Text = (!string.IsNullOrEmpty(BundledTwitchClientId) && cfgClientId == BundledTwitchClientId)
+            ? string.Empty
+            : cfgClientId;
         _hydrating = false;
     }
 
@@ -59,7 +62,10 @@ public sealed partial class SettingsWidgetPage
         _workingConfig["authEnabled"] = _authEnabledCheck.IsChecked == true ? "yes" : "no";
         _workingConfig["authPoints"] = _authPointsCheck.IsChecked == true ? "yes" : "no";
         _workingConfig["authFollows"] = _authFollowsCheck.IsChecked == true ? "yes" : "no";
-        _workingConfig["clientId"] = (_clientIdBox.Text ?? string.Empty).Trim();
+        var typedClientId = (_clientIdBox.Text ?? string.Empty).Trim();
+        _workingConfig["clientId"] = !string.IsNullOrEmpty(typedClientId)
+            ? typedClientId
+            : (_authEnabledCheck.IsChecked == true ? BundledTwitchClientId : string.Empty);
     }
 
     private void OnPresetChanged(object sender, SelectionChangedEventArgs e)

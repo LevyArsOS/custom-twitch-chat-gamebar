@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text.Json;
 using Windows.System;
 
@@ -7,7 +8,22 @@ namespace CustomTwitchChat.GameBar.App;
 public sealed partial class SettingsWidgetPage
 {
     private static readonly HttpClient AuthHttp = new();
+    private static readonly string BundledTwitchClientId = ResolveBundledTwitchClientId();
     private CancellationTokenSource? _authCts;
+
+    private static string ResolveBundledTwitchClientId()
+    {
+        var attrs = typeof(SettingsWidgetPage).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>();
+        foreach (var attr in attrs)
+        {
+            if (string.Equals(attr.Key, "DefaultTwitchClientId", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(attr.Value))
+            {
+                return attr.Value.Trim();
+            }
+        }
+        return string.Empty;
+    }
 
     private async void OpenTwitchDevConsoleAsync()
     {
@@ -21,9 +37,14 @@ public sealed partial class SettingsWidgetPage
         var clientId = (_clientIdBox.Text ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(clientId))
         {
+            clientId = BundledTwitchClientId;
+        }
+        if (string.IsNullOrEmpty(clientId))
+        {
             SetStatus("Paste your Twitch Public Client ID first (click Dev Console to create one).");
             return;
         }
+        _workingConfig["clientId"] = clientId;
 
         _authCts?.Cancel();
         _authCts = new CancellationTokenSource();

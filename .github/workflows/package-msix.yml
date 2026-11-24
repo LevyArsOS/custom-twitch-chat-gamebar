@@ -32,6 +32,7 @@ jobs:
       - name: Build signed end-user MSIX bundle
         shell: pwsh
         env:
+          TWITCH_CLIENT_ID: ${{ vars.TWITCH_CLIENT_ID || secrets.TWITCH_CLIENT_ID }}
           MSIX_PFX_BASE64: ${{ secrets.MSIX_PFX_BASE64 }}
           MSIX_PFX_PASSWORD: ${{ secrets.MSIX_PFX_PASSWORD }}
         run: .\scripts\build-release-msix.ps1 -Configuration Release -Platform x64

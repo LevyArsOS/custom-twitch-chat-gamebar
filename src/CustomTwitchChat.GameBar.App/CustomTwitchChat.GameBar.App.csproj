@@ -17,7 +17,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CsWinRTIncludes>Microsoft.Gaming.XboxGameBar</CsWinRTIncludes>
     <CsWinRTWindowsMetadata>"$(SystemRoot)\System32\WinMetadata"</CsWinRTWindowsMetadata>
+    <DefaultTwitchClientId Condition="'$(DefaultTwitchClientId)' == ''">$(TWITCH_CLIENT_ID)</DefaultTwitchClientId>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(DefaultTwitchClientId)' != ''">
+    <AssemblyMetadata Include="DefaultTwitchClientId" Value="$(DefaultTwitchClientId)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="7.3.2607010" />

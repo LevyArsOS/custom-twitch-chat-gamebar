@@ -28,12 +28,19 @@ if (Test-Path $LayoutDir) { Remove-Item $LayoutDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $LayoutDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $LayoutDir "GameBar") | Out-Null
 
-dotnet publish $AppProject `
-    -c $Configuration `
-    -p:Platform=$Platform `
-    -r "win-$Platform" `
-    --self-contained true `
-    -o $LayoutDir
+$PublishArgs = @(
+    "publish", $AppProject,
+    "-c", $Configuration,
+    "-p:Platform=$Platform",
+    "-r", "win-$Platform",
+    "--self-contained", "true",
+    "-o", $LayoutDir
+)
+if (-not [string]::IsNullOrWhiteSpace($env:TWITCH_CLIENT_ID)) {
+    $PublishArgs += "-p:DefaultTwitchClientId=$($env:TWITCH_CLIENT_ID.Trim())"
+}
+
+& dotnet @PublishArgs
 
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
